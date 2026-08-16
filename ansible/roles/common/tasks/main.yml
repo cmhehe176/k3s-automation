@@ -1,0 +1,68 @@
+---
+- name: Update apt cache
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+  when: ansible_os_family == "Debian"
+
+- name: Install base packages
+  apt:
+    name:
+      - curl
+      - wget
+      - vim
+      - git
+      - net-tools
+      - htop
+      - nfs-common
+      - open-iscsi
+    state: present
+  when: ansible_os_family == "Debian"
+
+- name: Set timezone
+  timezone:
+    name: "{{ system_timezone }}"
+
+- name: Disable swap immediately
+  command: swapoff -a
+  changed_when: false
+
+- name: Remove swap from fstab
+  lineinfile:
+    path: /etc/fstab
+    regexp: '.*swap.*'
+    state: absent
+
+- name: Load kernel modules
+  modprobe:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - overlay
+    - br_netfilter
+
+- name: Make kernel modules persistent
+  copy:
+    dest: /etc/modules-load.d/k3s.conf
+    content: |
+      overlay
+      br_netfilter
+    mode: '0644'
+
+- name: Configure sysctl for Kubernetes
+  sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    state: present
+    reload: yes
+    sysctl_file: /etc/sysctl.d/99-k3s.conf
+  loop:
+    - { name: 'net.bridge.bridge-nf-call-iptables', value: '1' }
+    - { name: 'net.bridge.bridge-nf-call-ip6tables', value: '1' }
+    - { name: 'net.ipv4.ip_forward', value: '1' }
+
+- name: Start and enable iscsid service (for Longhorn)
+  systemd:
+    name: iscsid
+    state: started
+    enabled: yes

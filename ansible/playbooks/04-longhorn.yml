@@ -1,0 +1,67 @@
+---
+- name: Deploy Longhorn Storage
+  hosts: k3s_control[0]
+  gather_facts: no
+
+  tasks:
+    - name: Apply Longhorn manifest
+      command: kubectl apply -f https://raw.githubusercontent.com/longhorn/longhorn/v1.7.1/deploy/longhorn.yaml
+      changed_when: true
+
+    - name: Wait for longhorn-system namespace
+      command: kubectl get namespace longhorn-system
+      register: ns_check
+      retries: 30
+      delay: 5
+      until: ns_check.rc == 0
+      changed_when: false
+
+    - name: Wait for Longhorn manager DaemonSet to exist
+      command: kubectl get daemonset longhorn-manager -n longhorn-system
+      register: daemonset_check
+      retries: 60
+      delay: 5
+      until: daemonset_check.rc == 0
+      changed_when: false
+
+    - name: Wait for Longhorn manager pods to be ready
+      command: kubectl wait --namespace longhorn-system --for=condition=ready pod --selector=app=longhorn-manager --timeout=300s
+      register: wait_result
+      retries: 2
+      delay: 30
+      until: wait_result.rc == 0
+      changed_when: false
+
+    - name: Check Longhorn pod status (if wait failed)
+      command: kubectl get pods -n longhorn-system
+      register: longhorn_pods
+      when: wait_result is failed
+      changed_when: false
+
+    - name: Display Longhorn pods (if wait failed)
+      debug:
+        var: longhorn_pods.stdout_lines
+      when: wait_result is failed
+
+    - name: Set Longhorn as default StorageClass
+      command: kubectl patch storageclass longhorn -p '{"metadata":{"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+      changed_when: true
+      ignore_errors: yes
+
+    - name: Get StorageClasses
+      command: kubectl get storageclass
+      register: storage_classes
+      changed_when: false
+
+    - name: Display StorageClasses
+      debug:
+        var: storage_classes.stdout_lines
+
+    - name: Get Longhorn pods status
+      command: kubectl get pods -n longhorn-system
+      register: longhorn_pods_final
+      changed_when: false
+
+    - name: Display Longhorn status
+      debug:
+        var: longhorn_pods_final.stdout_lines

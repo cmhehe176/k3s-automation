@@ -1,0 +1,105 @@
+---
+- name: Deploy ArgoCD
+  hosts: k3s_control[0]
+  gather_facts: no
+
+  vars:
+    argocd_version: "v2.12.0"
+    argocd_namespace: "argocd"
+
+  tasks:
+    - name: Create ArgoCD namespace
+      command: kubectl create namespace {{ argocd_namespace }}
+      register: ns_create
+      failed_when: ns_create.rc != 0 and 'AlreadyExists' not in ns_create.stderr
+      changed_when: ns_create.rc == 0
+
+    - name: Apply ArgoCD manifest
+      command: kubectl apply -n {{ argocd_namespace }} -f https://raw.githubusercontent.com/argoproj/argo-cd/{{ argocd_version }}/manifests/install.yaml
+      changed_when: true
+
+    - name: Wait for ArgoCD pods to be created
+      command: kubectl get pods -n {{ argocd_namespace }}
+      register: pods_check
+      retries: 30
+      delay: 5
+      until: pods_check.stdout_lines | length > 1
+      changed_when: false
+
+    - name: Wait for ArgoCD server deployment
+      command: kubectl wait --namespace {{ argocd_namespace }} --for=condition=Available deployment/argocd-server --timeout=600s
+      register: server_ready
+      retries: 2
+      delay: 30
+      until: server_ready.rc == 0
+      changed_when: false
+
+    - name: Wait for all ArgoCD pods to be ready
+      command: kubectl wait --namespace {{ argocd_namespace }} --for=condition=ready pod --all --timeout=600s
+      register: pods_ready
+      changed_when: false
+      ignore_errors: yes
+
+    - name: Get ArgoCD server service
+      command: kubectl get svc argocd-server -n {{ argocd_namespace }}
+      register: argocd_svc
+      changed_when: false
+
+    - name: Display ArgoCD service
+      debug:
+        var: argocd_svc.stdout_lines
+
+    - name: Patch ArgoCD server to use LoadBalancer
+      command: kubectl patch svc argocd-server -n {{ argocd_namespace }} -p '{"spec":{"type":"LoadBalancer"}}'
+      changed_when: true
+
+    - name: Wait for LoadBalancer IP
+      shell: kubectl get svc argocd-server -n {{ argocd_namespace }} -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
+      register: lb_ip
+      retries: 30
+      delay: 5
+      until: lb_ip.stdout != ""
+      changed_when: false
+      ignore_errors: yes
+
+    - name: Get ArgoCD initial admin password
+      command: kubectl get secret argocd-initial-admin-secret -n {{ argocd_namespace }} -o jsonpath='{.data.password}'
+      register: admin_password_b64
+      changed_when: false
+      ignore_errors: yes
+
+    - name: Decode admin password
+      command: echo {{ admin_password_b64.stdout }} | base64 -d
+      register: admin_password
+      when: admin_password_b64.rc == 0
+      changed_when: false
+
+    - name: Get ArgoCD pods status
+      command: kubectl get pods -n {{ argocd_namespace }} -o wide
+      register: argocd_pods
+      changed_when: false
+
+    - name: Display ArgoCD pods
+      debug:
+        var: argocd_pods.stdout_lines
+
+    - name: Display ArgoCD access information
+      debug:
+        msg:
+          - "=========================================="
+          - "ArgoCD deployed successfully!"
+          - "=========================================="
+          - "Namespace: {{ argocd_namespace }}"
+          - "Version: {{ argocd_version }}"
+          - ""
+          - "Access ArgoCD UI:"
+          - "  URL: https://{{ lb_ip.stdout | default('pending') }}"
+          - "  Username: admin"
+          - "  Password: {{ admin_password.stdout | default('See secret argocd-initial-admin-secret') }}"
+          - ""
+          - "CLI Login:"
+          - "  argocd login {{ lb_ip.stdout | default('pending') }} --username admin --password '{{ admin_password.stdout | default('PASSWORD') }}' --insecure"
+          - ""
+          - "Get password manually:"
+          - "  kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath='{.data.password}' | base64 -d"
+          - "=========================================="

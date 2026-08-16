@@ -1,0 +1,22 @@
+---
+- name: Cài K3s Control Plane
+  hosts: k3s_control
+  gather_facts: yes
+  roles:
+    - k3s-server
+
+  post_tasks:
+    - name: Verify K3s is running
+      systemd:
+        name: k3s
+        state: started
+        enabled: yes
+
+    - name: Get cluster info
+      command: kubectl cluster-info
+      register: cluster_info
+      changed_when: false
+
+    - name: Display cluster info
+      debug:
+        var: cluster_info.stdout_lines

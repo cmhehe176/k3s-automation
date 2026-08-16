@@ -1,0 +1,58 @@
+---
+- name: Uninstall ArgoCD
+  hosts: k3s_control[0]
+  gather_facts: no
+
+  vars:
+    argocd_namespace: "argocd"
+
+  tasks:
+    - name: Check if ArgoCD namespace exists
+      command: kubectl get namespace {{ argocd_namespace }}
+      register: ns_check
+      failed_when: false
+      changed_when: false
+
+    - name: Delete ArgoCD applications (if any)
+      shell: kubectl get applications -n {{ argocd_namespace }} -o name | xargs -r kubectl delete -n {{ argocd_namespace }}
+      when: ns_check.rc == 0
+      changed_when: true
+      ignore_errors: yes
+
+    - name: Delete ArgoCD resources
+      command: kubectl delete -n {{ argocd_namespace }} all --all
+      when: ns_check.rc == 0
+      changed_when: true
+      ignore_errors: yes
+
+    - name: Delete ArgoCD namespace
+      command: kubectl delete namespace {{ argocd_namespace }}
+      when: ns_check.rc == 0
+      changed_when: true
+      ignore_errors: yes
+
+    - name: Wait for namespace deletion
+      command: kubectl get namespace {{ argocd_namespace }}
+      register: ns_delete_check
+      retries: 30
+      delay: 5
+      until: ns_delete_check.rc != 0
+      changed_when: false
+      ignore_errors: yes
+
+    - name: Verify ArgoCD removal
+      command: kubectl get namespace {{ argocd_namespace }}
+      register: final_check
+      failed_when: false
+      changed_when: false
+
+    - name: Display uninstall result
+      debug:
+        msg:
+          - "=========================================="
+          - "{% if final_check.rc != 0 %}✅ ArgoCD uninstalled successfully{% else %}⚠️  ArgoCD namespace still exists{% endif %}"
+          - "=========================================="
+          - "Namespace '{{ argocd_namespace }}' removed: {{ 'Yes' if final_check.rc != 0 else 'No (may be stuck, check manually)' }}"
+          - ""
+          - "{% if final_check.rc == 0 %}Manual cleanup if stuck:{% endif %}"
+          - "{% if final_check.rc == 0 %}  kubectl get namespace {{ argocd_namespace }} -o json | jq '.spec.finalizers = []' | kubectl replace --raw /api/v1/namespaces/{{ argocd_namespace }}/finalize -f -{% endif %}"

@@ -1,0 +1,4 @@
+---
+# K3s Agent Arguments
+k3s_agent_args:
+  - --node-name {{ inventory_hostname }}

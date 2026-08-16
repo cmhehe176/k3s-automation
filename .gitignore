@@ -1,0 +1,30 @@
+# Ansible temporary files
+*.retry
+.ansible/
+
+# Kubeconfig
+*.kubeconfig
+config-k3s
+
+# Tokens
+*token*
+!group_vars/*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+
+# Terraform (nếu có thêm sau)
+.terraform/
+*.tfstate
+*.tfstate.backup

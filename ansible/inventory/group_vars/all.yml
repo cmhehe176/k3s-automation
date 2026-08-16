@@ -1,0 +1,18 @@
+---
+# K3s Version
+k3s_version: v1.30.3+k3s1
+
+# Cluster Token - CHANGE THIS or use Ansible Vault!
+# Generate: openssl rand -base64 32
+k3s_token: "{{ lookup('env', 'K3S_TOKEN') | default('CHANGE-ME-' + lookup('password', '/dev/null chars=ascii_letters,digits length=32'), true) }}"
+
+# Network Configuration
+cluster_cidr: 10.42.0.0/16
+service_cidr: 10.43.0.0/16
+cluster_dns: 10.43.0.10
+
+# System Settings
+system_timezone: Asia/Ho_Chi_Minh
+
+# MetalLB Configuration (adjust according to your network)
+metallb_ip_range: 192.168.1.100-192.168.1.150
