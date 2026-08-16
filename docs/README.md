@@ -19,14 +19,14 @@ Comprehensive guide covering:
 - Troubleshooting
 - Complete examples
 
-**→ [Scripts Reference](../ansible/scripts/README.md)** - All management scripts
+**→ [Scripts Index](../ansible/scripts/README.md)** - Scripts navigation
 
-Quick reference for:
-- `bootstrap.sh` - Initialize cluster
-- `add-node.sh` - Add workers
-- `remove-node.sh` - Remove nodes
-- `teardown.sh` - Flexible teardown
-- `deploy-argocd.sh` - ArgoCD GitOps
+Quick reference:
+- K3s: `bootstrap.sh`, `add-node.sh`, `remove-node.sh`, `teardown.sh`
+- ArgoCD: `deploy-argocd.sh`, `uninstall-argocd.sh`
+
+**→ [K3s Scripts](../ansible/k3s/scripts/README.md)** - Cluster management  
+**→ [ArgoCD Scripts](../ansible/argocd/scripts/README.md)** - GitOps deployment
 
 ---
 
@@ -57,10 +57,10 @@ Quick reference for:
 → [COMPLETE_GUIDE.md - Cluster Management](../COMPLETE_GUIDE.md#cluster-management)
 
 **Remove nodes or teardown**  
-→ [Scripts README - teardown.sh](../ansible/scripts/README.md#teardownsh)
+→ [K3s Scripts - teardown.sh](../ansible/k3s/scripts/README.md#teardownsh)
 
 **Deploy ArgoCD**  
-→ [Scripts README - deploy-argocd.sh](../ansible/scripts/README.md#deploy-argocdsh)
+→ [ArgoCD Scripts - deploy-argocd.sh](../ansible/argocd/scripts/README.md#deploy-argocdsh)
 
 **Troubleshoot issues**  
 → [COMPLETE_GUIDE.md - Troubleshooting](../COMPLETE_GUIDE.md#troubleshooting)

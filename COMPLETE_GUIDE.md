@@ -134,7 +134,7 @@ ssh-copy-id laptop@192.168.1.143
 ### 4. Bootstrap Cluster
 
 ```bash
-./scripts/bootstrap.sh
+./k3s/scripts/bootstrap.sh
 ```
 
 **What it does:**
@@ -148,10 +148,10 @@ ssh-copy-id laptop@192.168.1.143
 
 ```bash
 # Add single node
-./scripts/add-node.sh node-2
+./k3s/scripts/add-node.sh node-2
 
 # Add multiple nodes
-./scripts/add-node.sh node-2 node-3
+./k3s/scripts/add-node.sh node-2 node-3
 ```
 
 ### 6. Verify
@@ -166,38 +166,41 @@ kubectl get pods -A
 
 ## Scripts Reference
 
-All scripts located in `ansible/scripts/`. See [Scripts README](ansible/scripts/README.md) for full documentation.
+Scripts organized by application. See [Scripts Index](ansible/scripts/README.md) for navigation.
+
+- **K3s Scripts**: [ansible/k3s/scripts/README.md](ansible/k3s/scripts/README.md)
+- **ArgoCD Scripts**: [ansible/argocd/scripts/README.md](ansible/argocd/scripts/README.md)
 
 ### Core Operations
 
 | Script | Purpose | Example |
 |--------|---------|---------|
-| `bootstrap.sh` | Initialize cluster | `./scripts/bootstrap.sh` |
-| `add-node.sh` | Add worker nodes | `./scripts/add-node.sh node-2 node-3` |
-| `remove-node.sh` | Remove specific node | `./scripts/remove-node.sh node-2` |
-| `teardown.sh` | Flexible cluster teardown | `./scripts/teardown.sh --all` |
+| `bootstrap.sh` | Initialize cluster | `./k3s/scripts/bootstrap.sh` |
+| `add-node.sh` | Add worker nodes | `./k3s/scripts/add-node.sh node-2 node-3` |
+| `remove-node.sh` | Remove specific node | `./k3s/scripts/remove-node.sh node-2` |
+| `teardown.sh` | Flexible cluster teardown | `./k3s/scripts/teardown.sh --all` |
 
 ### ArgoCD Operations
 
 | Script | Purpose | Example |
 |--------|---------|---------|
-| `deploy-argocd.sh` | Deploy ArgoCD | `./scripts/deploy-argocd.sh` |
-| `uninstall-argocd.sh` | Remove ArgoCD | `./scripts/uninstall-argocd.sh` |
+| `deploy-argocd.sh` | Deploy ArgoCD | `./argocd/scripts/deploy-argocd.sh` |
+| `uninstall-argocd.sh` | Remove ArgoCD | `./argocd/scripts/uninstall-argocd.sh` |
 
 ### Teardown Options
 
 ```bash
 # Remove entire cluster
-./scripts/teardown.sh --all
+./k3s/scripts/teardown.sh --all
 
 # Remove specific nodes only
-./scripts/teardown.sh --node node-2 --node node-3
+./k3s/scripts/teardown.sh --node node-2 --node node-3
 
 # Remove all workers (keep control plane)
-./scripts/teardown.sh --workers
+./k3s/scripts/teardown.sh --workers
 
 # Remove control plane (destroys cluster)
-./scripts/teardown.sh --control
+./k3s/scripts/teardown.sh --control
 ```
 
 ---
@@ -208,12 +211,12 @@ All scripts located in `ansible/scripts/`. See [Scripts README](ansible/scripts/
 
 **Standard node** (full resources):
 ```bash
-./scripts/add-node.sh node-2
+./k3s/scripts/add-node.sh node-2
 ```
 
 **Resource-limited node**:
 ```bash
-./scripts/add-node.sh node-2 --memory 16G --cpu-quota 50
+./k3s/scripts/add-node.sh node-2 --memory 16G --cpu-quota 50
 kubectl label node node-2 memory=low
 ```
 
@@ -221,7 +224,7 @@ kubectl label node node-2 memory=low
 
 ```bash
 # Remove specific worker
-./scripts/remove-node.sh node-2
+./k3s/scripts/remove-node.sh node-2
 ```
 
 **What happens:**
@@ -387,17 +390,17 @@ ssh user@node "sudo journalctl -u k3s-agent -f"
 
 ```bash
 # Complete teardown
-./scripts/teardown.sh --all
+./k3s/scripts/teardown.sh --all
 
 # Bootstrap fresh cluster
-./scripts/bootstrap.sh
+./k3s/scripts/bootstrap.sh
 ```
 
 ### Get Help
 
 ```bash
 # Check script usage
-./scripts/<script-name>.sh --help
+./k3s/scripts/<script-name>.sh --help
 
 # View playbook tasks
 ansible-playbook playbooks/<playbook>.yml --list-tasks
@@ -463,7 +466,9 @@ k3s-automation/
 
 - **[Deployment Guide](docs/guides/deployment.md)** - Detailed step-by-step deployment
 - **[Add Nodes Guide](docs/guides/add-nodes.md)** - Advanced node management
-- **[Scripts README](ansible/scripts/README.md)** - Complete scripts reference
+- **[Scripts Index](ansible/scripts/README.md)** - Scripts navigation
+  - [K3s Scripts](ansible/k3s/scripts/README.md) - Cluster management
+  - [ArgoCD Scripts](ansible/argocd/scripts/README.md) - GitOps deployment
 - **[Requirements](docs/operations/requirements.md)** - System requirements
 - **[Security](docs/operations/security.md)** - Security best practices
 - **[Inventory Reference](docs/reference/inventory.md)** - Inventory configuration
@@ -478,25 +483,25 @@ k3s-automation/
 2. **Dual-Purpose Control** - Node-1 runs both control plane and workloads
 3. **Flexible Teardown** - Remove specific nodes, workers only, or entire cluster
 4. **Auto-Fixed Issues** - Longhorn DaemonSet, Python kubernetes lib auto-installed
-5. **Scripts Organized** - All management scripts in `ansible/scripts/`
+5. **Scripts Organized** - Scripts organized by app: `ansible/k3s/scripts/`, `ansible/argocd/scripts/`
 
 ### 📌 Common Commands
 
 ```bash
 # Initial setup
-./scripts/bootstrap.sh
+./k3s/scripts/bootstrap.sh
 
 # Add workers
-./scripts/add-node.sh node-2 node-3
+./k3s/scripts/add-node.sh node-2 node-3
 
 # Deploy ArgoCD
-./scripts/deploy-argocd.sh
+./argocd/scripts/deploy-argocd.sh
 
 # Remove a node
-./scripts/remove-node.sh node-2
+./k3s/scripts/remove-node.sh node-2
 
 # Teardown cluster
-./scripts/teardown.sh --all
+./k3s/scripts/teardown.sh --all
 ```
 
 ### 🎯 Current Cluster State
