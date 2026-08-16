@@ -19,6 +19,8 @@
         - "{{ backup_dir }}"
         - "{{ etcd_backup_dir }}"
         - "{{ longhorn_backup_dir }}"
+      tags:
+        - always
 
     - name: Create ETCD snapshot
       command: >
@@ -27,28 +29,46 @@
         --snapshot-dir {{ etcd_backup_dir }}
       changed_when: true
       register: etcd_snapshot
+      tags:
+        - etcd
+        - always
 
     - name: Display ETCD snapshot result
       debug:
         var: etcd_snapshot.stdout_lines
+      tags:
+        - etcd
+        - always
 
     - name: List ETCD snapshots
       command: k3s etcd-snapshot ls --snapshot-dir {{ etcd_backup_dir }}
       register: etcd_list
       changed_when: false
+      tags:
+        - etcd
+        - always
 
     - name: Display ETCD snapshots
       debug:
         var: etcd_list.stdout_lines
+      tags:
+        - etcd
+        - always
 
     - name: Check if Longhorn is installed
       command: kubectl get namespace longhorn-system
       register: longhorn_ns
       failed_when: false
       changed_when: false
+      tags:
+        - longhorn
+        - always
 
     - name: Create Longhorn backup ConfigMap
       when: longhorn_ns.rc == 0
+      tags:
+        - longhorn
+        - always
       block:
         - name: Get all PVCs
           command: kubectl get pvc -A -o json
@@ -84,6 +104,10 @@
         age: "{{ retention_days }}d"
         patterns: "*"
       register: old_etcd_backups
+      tags:
+        - etcd
+        - cleanup
+        - always
 
     - name: Remove old ETCD backups
       file:
@@ -91,6 +115,10 @@
         state: absent
       loop: "{{ old_etcd_backups.files }}"
       when: old_etcd_backups.matched > 0
+      tags:
+        - etcd
+        - cleanup
+        - always
 
     - name: Clean old Longhorn backups
       find:
@@ -98,6 +126,10 @@
         age: "{{ retention_days }}d"
         patterns: "*.json"
       register: old_longhorn_backups
+      tags:
+        - longhorn
+        - cleanup
+        - always
 
     - name: Remove old Longhorn backups
       file:
@@ -105,6 +137,10 @@
         state: absent
       loop: "{{ old_longhorn_backups.files }}"
       when: old_longhorn_backups.matched > 0
+      tags:
+        - longhorn
+        - cleanup
+        - always
 
     - name: Get backup summary
       find:
