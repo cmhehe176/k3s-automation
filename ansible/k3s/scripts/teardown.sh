@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 # ============================================
 # Teardown K3s Cluster
@@ -57,6 +57,14 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         --node)
+            if [[ -z "$2" ]]; then
+                echo "❌ Error: --node requires a node name"
+                exit 1
+            fi
+            if [[ ! "$2" =~ ^[a-zA-Z0-9._-]+$ ]]; then
+                echo "❌ Error: Invalid node name '$2'. Only alphanumeric, dots, hyphens, and underscores allowed"
+                exit 1
+            fi
             SPECIFIC_NODES+=("$2")
             shift 2
             ;;

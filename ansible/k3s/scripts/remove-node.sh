@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 # ============================================
 # Remove Node from K3s Cluster
@@ -29,6 +29,17 @@ if [ $# -eq 0 ]; then
 fi
 
 NODE_NAME="$1"
+
+# Validate node name
+if [[ -z "$NODE_NAME" ]]; then
+    echo "❌ Error: Node name cannot be empty"
+    exit 1
+fi
+
+if [[ ! "$NODE_NAME" =~ ^[a-zA-Z0-9._-]+$ ]]; then
+    echo "❌ Error: Invalid node name. Only alphanumeric, dots, hyphens, and underscores allowed"
+    exit 1
+fi
 
 # Check if running from ansible directory
 if [ ! -f "ansible.cfg" ]; then

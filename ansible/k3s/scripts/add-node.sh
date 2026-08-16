@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 # ============================================
 # Add Node to K3s Cluster
@@ -101,6 +101,38 @@ done
 if [ ${#NODES[@]} -eq 0 ]; then
     echo "❌ Error: No nodes specified"
     show_usage
+    exit 1
+fi
+
+# Validate node names
+for node in "${NODES[@]}"; do
+    if [[ -z "$node" ]]; then
+        echo "❌ Error: Empty node name provided"
+        exit 1
+    fi
+    if [[ ! "$node" =~ ^[a-zA-Z0-9._-]+$ ]]; then
+        echo "❌ Error: Invalid node name '$node'. Only alphanumeric, dots, hyphens, and underscores allowed"
+        exit 1
+    fi
+done
+
+# Validate memory if specified
+if [[ -n "${MEMORY_LIMIT:-}" ]]; then
+    if [[ ! "$MEMORY_LIMIT" =~ ^[0-9]+[GMK]?$ ]]; then
+        echo "❌ Error: Invalid memory format '$MEMORY_LIMIT'. Use format like: 16G, 8G, 2048M"
+        exit 1
+    fi
+fi
+
+# Validate CPU quota
+if [[ ! "$CPU_QUOTA" =~ ^[0-9]+$ ]] || [ "$CPU_QUOTA" -lt 1 ] || [ "$CPU_QUOTA" -gt 100 ]; then
+    echo "❌ Error: CPU quota must be between 1-100"
+    exit 1
+fi
+
+# Validate role
+if [[ ! "$NODE_ROLE" =~ ^(worker|middleware|dual|database)$ ]]; then
+    echo "❌ Error: Invalid role '$NODE_ROLE'. Must be: worker, middleware, dual, or database"
     exit 1
 fi
 

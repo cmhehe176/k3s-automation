@@ -5,7 +5,7 @@
 
   tasks:
     - name: Apply Longhorn manifest
-      command: kubectl apply -f https://raw.githubusercontent.com/longhorn/longhorn/v1.7.1/deploy/longhorn.yaml
+      command: kubectl apply -f https://raw.githubusercontent.com/longhorn/longhorn/{{ longhorn_version }}/deploy/longhorn.yaml
       changed_when: true
 
     - name: Wait for longhorn-system namespace

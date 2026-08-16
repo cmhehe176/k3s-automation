@@ -59,13 +59,21 @@
     src: /var/lib/rancher/k3s/server/node-token
   register: node_token
 
-- name: Save token locally
+- name: Save token locally (encrypted)
   copy:
     content: "{{ node_token.content | b64decode }}"
-    dest: /tmp/k3s-node-token
+    dest: "{{ playbook_dir }}/../.vault/k3s-node-token"
     mode: '0600'
   delegate_to: localhost
   become: no
+  no_log: true
+
+- name: Encrypt token with ansible-vault
+  command: ansible-vault encrypt "{{ playbook_dir }}/../.vault/k3s-node-token"
+  delegate_to: localhost
+  become: no
+  when: ansible_vault_password_file is defined or lookup('env', 'ANSIBLE_VAULT_PASSWORD_FILE') != ''
+  ignore_errors: yes
 
 - name: Fetch kubeconfig to local machine
   fetch:

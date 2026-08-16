@@ -1,0 +1,99 @@
+---
+- name: Restore K3s ETCD from Snapshot
+  hosts: k3s_control
+  gather_facts: yes
+  serial: 1
+
+  vars:
+    backup_dir: "/var/backups/k3s"
+    etcd_backup_dir: "{{ backup_dir }}/etcd"
+
+  tasks:
+    - name: Validate snapshot file variable
+      fail:
+        msg: "snapshot_file variable is required. Use: -e snapshot_file=backup-filename"
+      when: snapshot_file is not defined
+
+    - name: Check if snapshot exists
+      stat:
+        path: "{{ etcd_backup_dir }}/{{ snapshot_file }}"
+      register: snapshot_stat
+
+    - name: Fail if snapshot not found
+      fail:
+        msg: "Snapshot file not found: {{ etcd_backup_dir }}/{{ snapshot_file }}"
+      when: not snapshot_stat.stat.exists
+
+    - name: Display snapshot info
+      debug:
+        msg:
+          - "Restoring from: {{ snapshot_file }}"
+          - "Full path: {{ etcd_backup_dir }}/{{ snapshot_file }}"
+          - "Size: {{ snapshot_stat.stat.size | filesizeformat }}"
+
+    - name: Confirm restore (safety check)
+      pause:
+        prompt: "WARNING: This will restore ETCD from snapshot. Current cluster state will be replaced. Press Enter to continue or Ctrl+C to abort"
+      when: confirm_restore is not defined or not confirm_restore
+
+    - name: Stop K3s service
+      systemd:
+        name: k3s
+        state: stopped
+
+    - name: Restore ETCD snapshot
+      command: >
+        k3s server
+        --cluster-reset
+        --cluster-reset-restore-path={{ etcd_backup_dir }}/{{ snapshot_file }}
+      async: 60
+      poll: 0
+      register: restore_job
+
+    - name: Wait for restore to initialize
+      wait_for:
+        timeout: 10
+
+    - name: Start K3s service
+      systemd:
+        name: k3s
+        state: started
+        enabled: yes
+
+    - name: Wait for K3s to be ready
+      command: kubectl get nodes
+      register: nodes_check
+      retries: 30
+      delay: 5
+      until: nodes_check.rc == 0
+      changed_when: false
+
+    - name: Display restored cluster nodes
+      debug:
+        var: nodes_check.stdout_lines
+
+    - name: Verify cluster health
+      command: kubectl get nodes -o wide
+      register: cluster_health
+      changed_when: false
+
+    - name: Display cluster health
+      debug:
+        var: cluster_health.stdout_lines
+
+    - name: Get all pods status
+      command: kubectl get pods -A
+      register: pods_status
+      changed_when: false
+
+    - name: Display pods status
+      debug:
+        var: pods_status.stdout_lines
+
+    - name: Restore summary
+      debug:
+        msg:
+          - "ETCD restore completed"
+          - "Snapshot: {{ snapshot_file }}"
+          - "Cluster is operational"
+          - "NOTE: Check pods status and restart worker nodes if needed"

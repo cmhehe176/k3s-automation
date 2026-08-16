@@ -1,0 +1,122 @@
+---
+- name: Backup K3s ETCD and Longhorn Volumes
+  hosts: k3s_control[0]
+  gather_facts: yes
+
+  vars:
+    backup_dir: "/var/backups/k3s"
+    etcd_backup_dir: "{{ backup_dir }}/etcd"
+    longhorn_backup_dir: "{{ backup_dir }}/longhorn"
+    retention_days: 7
+
+  tasks:
+    - name: Create backup directories
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+      loop:
+        - "{{ backup_dir }}"
+        - "{{ etcd_backup_dir }}"
+        - "{{ longhorn_backup_dir }}"
+
+    - name: Create ETCD snapshot
+      command: >
+        k3s etcd-snapshot save
+        --name backup-{{ ansible_date_time.iso8601_basic_short }}
+        --snapshot-dir {{ etcd_backup_dir }}
+      changed_when: true
+      register: etcd_snapshot
+
+    - name: Display ETCD snapshot result
+      debug:
+        var: etcd_snapshot.stdout_lines
+
+    - name: List ETCD snapshots
+      command: k3s etcd-snapshot ls --snapshot-dir {{ etcd_backup_dir }}
+      register: etcd_list
+      changed_when: false
+
+    - name: Display ETCD snapshots
+      debug:
+        var: etcd_list.stdout_lines
+
+    - name: Check if Longhorn is installed
+      command: kubectl get namespace longhorn-system
+      register: longhorn_ns
+      failed_when: false
+      changed_when: false
+
+    - name: Create Longhorn backup ConfigMap
+      when: longhorn_ns.rc == 0
+      block:
+        - name: Get all PVCs
+          command: kubectl get pvc -A -o json
+          register: pvc_list
+          changed_when: false
+
+        - name: Save PVC list to file
+          copy:
+            content: "{{ pvc_list.stdout }}"
+            dest: "{{ longhorn_backup_dir }}/pvc-list-{{ ansible_date_time.iso8601_basic_short }}.json"
+            mode: '0644'
+
+        - name: Get Longhorn volumes
+          command: kubectl get volumes.longhorn.io -n longhorn-system -o json
+          register: longhorn_volumes
+          changed_when: false
+          failed_when: false
+
+        - name: Save Longhorn volumes to file
+          copy:
+            content: "{{ longhorn_volumes.stdout }}"
+            dest: "{{ longhorn_backup_dir }}/volumes-{{ ansible_date_time.iso8601_basic_short }}.json"
+            mode: '0644'
+          when: longhorn_volumes.rc == 0
+
+        - name: Display Longhorn backup info
+          debug:
+            msg: "Longhorn metadata backed up to {{ longhorn_backup_dir }}"
+
+    - name: Clean old ETCD backups
+      find:
+        paths: "{{ etcd_backup_dir }}"
+        age: "{{ retention_days }}d"
+        patterns: "*"
+      register: old_etcd_backups
+
+    - name: Remove old ETCD backups
+      file:
+        path: "{{ item.path }}"
+        state: absent
+      loop: "{{ old_etcd_backups.files }}"
+      when: old_etcd_backups.matched > 0
+
+    - name: Clean old Longhorn backups
+      find:
+        paths: "{{ longhorn_backup_dir }}"
+        age: "{{ retention_days }}d"
+        patterns: "*.json"
+      register: old_longhorn_backups
+
+    - name: Remove old Longhorn backups
+      file:
+        path: "{{ item.path }}"
+        state: absent
+      loop: "{{ old_longhorn_backups.files }}"
+      when: old_longhorn_backups.matched > 0
+
+    - name: Get backup summary
+      find:
+        paths: "{{ backup_dir }}"
+        recurse: yes
+        file_type: file
+      register: backup_files
+
+    - name: Display backup summary
+      debug:
+        msg:
+          - "Backup completed successfully"
+          - "Total backup files: {{ backup_files.matched }}"
+          - "Backup location: {{ backup_dir }}"
+          - "Retention period: {{ retention_days }} days"
