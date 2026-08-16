@@ -9,24 +9,22 @@
 - 📝 Logging (ELK stack included)
 - 🚀 Optional: DevOps (Jenkins CI/CD)
 
-## 📋 Resources
+## 📋 Resources (Focus on Kibana/Logging)
 
-**Your Setup**: Node has 32GB RAM, plenty!
+**Your Priority**: Kibana for log analysis
 
-**KubeSphere Limit**: Set to use only **4GB max**
-- Core components: ~800MB
-- Monitoring (Prometheus): ~1GB
-- Logging (ELK): ~2GB
+**KubeSphere Limit**: 4GB total
+- Core: ~500MB
+- **Elasticsearch + Kibana**: ~2.5GB ⭐ (main focus)
+- Prometheus (minimal): ~800MB (keep for basic metrics)
 - Buffer: ~200MB
 
-**Why limit**: Reserve RAM for other apps/services
+**Storage**:
+- Logging (ES): 200GB (30 days logs)
+- Prometheus: 10GB (7 days metrics)
+- Total: 210GB
 
-**Storage**: 
-- KubeSphere: 50GB
-- Logging (30 days): 200GB
-- You have 2TB, no problem!
-
-## ⚙️ Configuration (4GB Resource Limit)
+## ⚙️ Configuration (Kibana-focused)
 
 ```yaml
 apiVersion: installer.kubesphere.io/v1alpha1
@@ -38,45 +36,55 @@ spec:
   persistence:
     storageClass: "longhorn"
   
-  # Monitoring - with resource limits
+  # Monitoring - MINIMAL (just for basic health)
   monitoring:
     storageClass: "longhorn"
-    prometheusMemoryRequest: 800Mi
-    prometheusMemoryLimit: 1Gi      # Limit to 1GB
-    prometheusVolumeSize: 20Gi
+    prometheusMemoryRequest: 400Mi
+    prometheusMemoryLimit: 800Mi     # Keep small
+    prometheusVolumeSize: 10Gi
     prometheusReplicas: 1
+    node_exporter:
+      enabled: true                   # Node metrics
+    kube_state_metrics:
+      enabled: true                   # Basic K8s metrics
+    # Disable heavy exporters
+    alerting:
+      enabled: false
   
-  # Logging - with resource limits
+  # Logging - FULL ENABLE ⭐ (Elasticsearch + Kibana)
   logging:
-    enabled: true  # Enable with limits
+    enabled: true                     # ⭐ Main feature
     logsidecar:
       enabled: true
-      replicas: 1
+      replicas: 2
     elasticsearch:
       elasticsearchMasterReplicas: 1
       elasticsearchDataReplicas: 1
       elasticsearchMasterVolumeSize: 10Gi
-      elasticsearchDataVolumeSize: 200Gi
-      logMaxAge: 30  # 30 days retention
-      # Resource limits for ES
+      elasticsearchDataVolumeSize: 200Gi  # 200GB for logs
+      logMaxAge: 30                   # Keep 30 days
+      elkPrefix: logstash
+      # ES resource limits
       elasticsearchJavaOpts: "-Xms1g -Xmx1g"  # 1GB heap
       resources:
         limits:
-          memory: 2Gi  # ES max 2GB
+          cpu: 1
+          memory: 2Gi               # ES max 2GB
         requests:
+          cpu: 500m
           memory: 1Gi
   
-  # Keep other components minimal
+  # Keep minimal
   alerting:
-    enabled: false
+    enabled: false                    # No alerts needed
   auditing:
     enabled: false
   devops:
-    enabled: false  # Add later if needed
+    enabled: false
   events:
-    enabled: true
+    enabled: true                     # K8s events for context
   metrics_server:
-    enabled: true
+    enabled: true                     # Basic metrics
   openpitrix:
     store:
       enabled: false
@@ -84,7 +92,12 @@ spec:
     enabled: false
 ```
 
-**Total KubeSphere**: ~4GB RAM, 250GB storage 
+**Result**: 
+- ✅ Kibana accessible in KubeSphere Console
+- ✅ Log search across all pods
+- ✅ Log analysis & filtering
+- ✅ Log export
+- ✅ Basic metrics (bonus) 
 
 ## 🚀 Quick Install
 
@@ -133,18 +146,45 @@ kubectl top pods -n kubesphere-logging-system
 # Total: ~3-4GB
 ```
 
-### Step 4: Access Console
+## 🔍 Access Kibana in KubeSphere
 
-Open browser: `http://<MetalLB-IP>:30880`
+After installation:
 
-**Login**: admin / P@88w0rd
+1. **Login to KubeSphere Console**: `http://<IP>:30880`
+2. **Navigate**: Toolbox → Log Search (left sidebar)
+3. **You'll see**:
+   - 🔍 Search bar with query syntax
+   - 📊 Log histogram (time distribution)
+   - 📝 Log entries from all pods
+   - 🎯 Filters (namespace, pod, container)
+   - 📤 Export logs
 
-**You'll see**:
-- ✅ Cluster overview dashboard
-- ✅ Workload management
-- ✅ Monitoring charts (CPU, RAM, disk)
-- ✅ Log search & analysis (if enabled)
-- ✅ User & RBAC management
+**Search Examples**:
+```
+# All errors
+level:error
+
+# Specific pod
+kubernetes.pod_name:my-app*
+
+# Time range + keyword
+@timestamp:[now-1h TO now] AND "connection refused"
+
+# Namespace filter
+kubernetes.namespace_name:default AND message:*timeout*
+```
+
+## 📊 Monitoring vs Logging
+
+**Prometheus** (kept minimal):
+- View in: Platform → Clusters → Monitoring
+- Shows: CPU, RAM graphs
+- Use for: Quick health check
+
+**Kibana** (main focus):
+- View in: Toolbox → Log Search
+- Shows: All application logs
+- Use for: Debugging, troubleshooting, analysis
 
 ## 📦 Ansible Structure
 
