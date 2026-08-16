@@ -1,184 +1,43 @@
-# 🔧 K3s Automation Scripts
+# 🔧 Ansible Management Scripts
 
-Management scripts for K3s cluster operations.
+Scripts are organized by application for better maintainability and scalability.
 
 ---
 
 ## 📁 Script Organization
 
-Scripts are organized by application:
+Each application has its own scripts directory:
 
-- **K3s Core**: `k3s/scripts/` - Cluster management (bootstrap, nodes, teardown)
-- **ArgoCD**: `argocd/scripts/` - GitOps deployment
-
----
-
-## 📋 Available Scripts
-
-### Core Cluster Management (`k3s/scripts/`)
-
-#### `bootstrap.sh`
-Bootstrap a new K3s cluster from scratch.
-
-```bash
-./k3s/scripts/bootstrap.sh [control-node-name]
-
-# Default uses node-1
-./k3s/scripts/bootstrap.sh
-
-# Specify custom control node
-./k3s/scripts/bootstrap.sh node-1
-```
-
-**What it does:**
-1. Install prerequisites (Python kubernetes library)
-2. Deploy K3s control plane
-3. Deploy Longhorn storage
-4. Deploy MetalLB load balancer
-5. Configure control node as dual-purpose (control+worker)
+- **[k3s/scripts/](../k3s/scripts/)** - K3s cluster management (bootstrap, nodes, teardown)
+- **[argocd/scripts/](../argocd/scripts/)** - ArgoCD GitOps deployment
 
 ---
 
-#### `add-node.sh`
-Add worker nodes to existing cluster.
+## 🚀 Quick Navigation
 
-```bash
-./k3s/scripts/add-node.sh <node-name> [node2] [node3] ...
+### K3s Cluster Management
 
-# Add single node
-./k3s/scripts/add-node.sh node-2
+| Script | Purpose |
+|--------|---------|
+| [k3s/scripts/bootstrap.sh](../k3s/scripts/README.md#bootstrapsh) | Initialize cluster |
+| [k3s/scripts/add-node.sh](../k3s/scripts/README.md#add-nodesh) | Add worker nodes |
+| [k3s/scripts/remove-node.sh](../k3s/scripts/README.md#remove-nodesh) | Remove specific node |
+| [k3s/scripts/teardown.sh](../k3s/scripts/README.md#teardownsh) | Teardown cluster |
 
-# Add multiple nodes
-./k3s/scripts/add-node.sh node-2 node-3 node-4
+**→ [Full K3s Scripts Documentation](../k3s/scripts/README.md)**
 
-# With resource limits
-./k3s/scripts/add-node.sh node-2 --memory 16G --cpu-quota 50
-```
+### ArgoCD Management
 
-**Features:**
-- No taints applied by default (automatic load balancing)
-- Support for resource limits (memory/CPU quotas)
-- Parallel node addition
+| Script | Purpose |
+|--------|---------|
+| [argocd/scripts/deploy-argocd.sh](../argocd/scripts/README.md#deploy-argocdsh) | Deploy ArgoCD |
+| [argocd/scripts/uninstall-argocd.sh](../argocd/scripts/README.md#uninstall-argocdsh) | Remove ArgoCD |
 
----
-
-#### `remove-node.sh`
-Remove a specific worker node from cluster.
-
-```bash
-./k3s/scripts/remove-node.sh <node-name>
-
-# Example
-./k3s/scripts/remove-node.sh node-2
-```
-
-**What it does:**
-1. Drain pods from the node
-2. Delete node from cluster
-3. Uninstall K3s from the node
+**→ [Full ArgoCD Scripts Documentation](../argocd/scripts/README.md)**
 
 ---
 
-#### `teardown.sh`
-Teardown cluster - flexible options for different scenarios.
-
-```bash
-# Remove entire cluster
-./k3s/scripts/teardown.sh --all
-
-# Remove specific nodes
-./k3s/scripts/teardown.sh --node node-2
-./k3s/scripts/teardown.sh --node node-2 --node node-3
-
-# Remove all workers (keep control plane)
-./k3s/scripts/teardown.sh --workers
-
-# Remove control plane (destroys cluster!)
-./k3s/scripts/teardown.sh --control
-```
-
-**Options:**
-- `--all` - Teardown entire cluster (all nodes)
-- `--node <name>` - Teardown specific node(s)
-- `--workers` - Remove all worker nodes only
-- `--control` - Remove control plane (destroys cluster)
-
----
-
-### ArgoCD Management (`argocd/scripts/`)
-
-#### `deploy-argocd.sh`
-Deploy ArgoCD to the cluster.
-
-```bash
-./argocd/scripts/deploy-argocd.sh
-```
-
-**What it does:**
-1. Create argocd namespace
-2. Deploy ArgoCD v2.12.0
-3. Configure LoadBalancer service
-4. Display access credentials
-
----
-
-#### `uninstall-argocd.sh`
-Remove ArgoCD from the cluster.
-
-```bash
-./argocd/scripts/uninstall-argocd.sh
-```
-
-**What it does:**
-1. Delete all ArgoCD applications
-2. Remove ArgoCD namespace
-3. Clean up resources
-
----
-
-## 🚀 Common Workflows
-
-### Initial Setup
-```bash
-cd ansible/
-
-# 1. Bootstrap cluster
-./k3s/scripts/bootstrap.sh
-
-# 2. Add worker nodes
-./k3s/scripts/add-node.sh node-2 node-3
-
-# 3. Deploy ArgoCD (optional)
-./argocd/scripts/deploy-argocd.sh
-```
-
-### Add/Remove Nodes
-```bash
-# Add a new worker
-./k3s/scripts/add-node.sh node-4
-
-# Remove a worker
-./k3s/scripts/remove-node.sh node-4
-```
-
-### Complete Teardown
-```bash
-# Remove everything
-./k3s/scripts/teardown.sh --all
-```
-
-### Partial Teardown
-```bash
-# Keep control plane, remove workers
-./k3s/scripts/teardown.sh --workers
-
-# Then re-add workers
-./k3s/scripts/add-node.sh node-2 node-3
-```
-
----
-
-## 📋 Prerequisites
+## 📖 Usage
 
 All scripts must be run from the `ansible/` directory:
 
@@ -188,20 +47,72 @@ cd /path/to/k3s-automation/ansible
 ./argocd/scripts/<script-name>.sh
 ```
 
-**Requirements:**
+---
+
+## 🎯 Common Workflow
+
+```bash
+cd ansible/
+
+# 1. Bootstrap K3s cluster
+./k3s/scripts/bootstrap.sh
+
+# 2. Add worker nodes
+./k3s/scripts/add-node.sh node-2 node-3
+
+# 3. Deploy ArgoCD (optional)
+./argocd/scripts/deploy-argocd.sh
+
+# 4. Verify
+export KUBECONFIG=~/.kube/config-k3s
+kubectl get nodes
+kubectl get pods -A
+```
+
+---
+
+## 🔮 Adding New Applications
+
+When adding new applications (e.g., Prometheus, Grafana):
+
+```bash
+# Create directory structure
+mkdir -p <app-name>/{playbooks,roles,scripts}
+
+# Add scripts with documentation
+# Update ansible.cfg roles_path
+# Create <app-name>/scripts/README.md
+```
+
+Example structure:
+```
+ansible/
+├── k3s/
+├── argocd/
+└── prometheus/         # New app
+    ├── playbooks/
+    ├── roles/
+    └── scripts/
+        └── README.md   # App-specific docs
+```
+
+---
+
+## 📋 Prerequisites
+
 - Ansible installed
 - SSH access to all target nodes
-- `kubectl` installed (for teardown operations)
+- `kubectl` installed (for cluster operations)
 - Inventory file configured (`inventory/hosts.ini`)
 
 ---
 
 ## 🔗 Related Documentation
 
-- [Complete Guide](../../COMPLETE_GUIDE.md) - Full deployment guide
-- [Inventory Configuration](../docs/reference/inventory.md) - Inventory setup
+- [Complete Deployment Guide](../../../COMPLETE_GUIDE.md)
+- [Inventory Configuration](../../docs/reference/inventory.md)
 
 ---
 
-**Last Updated**: 2026-08-17  
+**Last Updated**: 2026-08-16  
 **Maintainer**: Congminh
