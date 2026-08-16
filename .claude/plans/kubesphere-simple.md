@@ -9,26 +9,24 @@
 - 📝 Logging (ELK stack included)
 - 🚀 Optional: DevOps (Jenkins CI/CD)
 
-## 📋 Resources (4GB RAM Limit)
+## 📋 Resources
 
-**Config for 4GB total system RAM:**
-- KubeSphere core: 2GB
-- Monitoring (lightweight): 1GB
-- Buffer: 1GB
+**Your Setup**: Node has 32GB RAM, plenty!
 
-**Skip logging initially** - Elasticsearch needs 2GB+
+**KubeSphere Limit**: Set to use only **4GB max**
+- Core components: ~800MB
+- Monitoring (Prometheus): ~1GB
+- Logging (ELK): ~2GB
+- Buffer: ~200MB
 
-→ Install minimal first, enable logging later if needed
+**Why limit**: Reserve RAM for other apps/services
 
-## 💾 Storage
+**Storage**: 
+- KubeSphere: 50GB
+- Logging (30 days): 200GB
+- You have 2TB, no problem!
 
-- KubeSphere system: 20GB
-- Monitoring (Prometheus): 20GB
-- Total: 40GB (you have 2TB, no problem!)
-
-## ⚙️ Lightweight Configuration
-
-Edit `cluster-configuration.yaml` **before** applying:
+## ⚙️ Configuration (4GB Resource Limit)
 
 ```yaml
 apiVersion: installer.kubesphere.io/v1alpha1
@@ -40,44 +38,53 @@ spec:
   persistence:
     storageClass: "longhorn"
   
-  # Core components - lightweight
-  console:
-    enableMultiLogin: true
-    port: 30880
-  
-  # Monitoring - minimal
+  # Monitoring - with resource limits
   monitoring:
     storageClass: "longhorn"
-    prometheusMemoryRequest: 400Mi  # Reduced from 2Gi
-    prometheusVolumeSize: 10Gi
+    prometheusMemoryRequest: 800Mi
+    prometheusMemoryLimit: 1Gi      # Limit to 1GB
+    prometheusVolumeSize: 20Gi
     prometheusReplicas: 1
   
-  # Metrics server - keep
-  metrics_server:
-    enabled: true
+  # Logging - with resource limits
+  logging:
+    enabled: true  # Enable with limits
+    logsidecar:
+      enabled: true
+      replicas: 1
+    elasticsearch:
+      elasticsearchMasterReplicas: 1
+      elasticsearchDataReplicas: 1
+      elasticsearchMasterVolumeSize: 10Gi
+      elasticsearchDataVolumeSize: 200Gi
+      logMaxAge: 30  # 30 days retention
+      # Resource limits for ES
+      elasticsearchJavaOpts: "-Xms1g -Xmx1g"  # 1GB heap
+      resources:
+        limits:
+          memory: 2Gi  # ES max 2GB
+        requests:
+          memory: 1Gi
   
-  # DISABLE heavy components
+  # Keep other components minimal
   alerting:
     enabled: false
   auditing:
     enabled: false
   devops:
-    enabled: false  # Skip Jenkins (needs 2GB+)
+    enabled: false  # Add later if needed
   events:
-    enabled: false
-  logging:
-    enabled: false  # Skip ELK (needs 4GB+)
+    enabled: true
+  metrics_server:
+    enabled: true
   openpitrix:
     store:
       enabled: false
   servicemesh:
-    enabled: false  # Skip Istio
-  network:
-    networkpolicy:
-      enabled: false
-    ippool:
-      type: none
-``` 
+    enabled: false
+```
+
+**Total KubeSphere**: ~4GB RAM, 250GB storage 
 
 ## 🚀 Quick Install
 
@@ -112,24 +119,32 @@ kubectl get svc ks-console -n kubesphere-system
 # Login: admin / P@88w0rd
 ```
 
-### Step 3: Monitor Resources
+### Step 3: Verify Resource Usage
 
 ```bash
-# Check RAM usage
-kubectl top nodes
-kubectl top pods -A
+# Check KubeSphere pods RAM usage
+kubectl top pods -n kubesphere-system
+kubectl top pods -n kubesphere-logging-system
 
-# If RAM > 3.5GB, consider:
-# 1. Remove ArgoCD temporarily
-# 2. Reduce Prometheus further
-# 3. Skip logging entirely
+# Should see:
+# - ks-* pods: ~800MB total
+# - elasticsearch: ~1.5GB
+# - prometheus: ~800MB
+# Total: ~3-4GB
 ```
 
-### Step 4: (Optional) Enable Logging Later
+### Step 4: Access Console
 
-**Only if you add more RAM!**
+Open browser: `http://<MetalLB-IP>:30880`
 
-Logging (ELK) needs +4GB RAM minimum.
+**Login**: admin / P@88w0rd
+
+**You'll see**:
+- ✅ Cluster overview dashboard
+- ✅ Workload management
+- ✅ Monitoring charts (CPU, RAM, disk)
+- ✅ Log search & analysis (if enabled)
+- ✅ User & RBAC management
 
 ## 📦 Ansible Structure
 
