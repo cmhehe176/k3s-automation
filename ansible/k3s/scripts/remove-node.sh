@@ -90,7 +90,7 @@ fi
 # Step 3: Uninstall K3s from the node
 echo ""
 echo "Step 3/3: Uninstalling K3s from $NODE_NAME..."
-ansible-playbook playbooks/99-teardown.yml --limit "$NODE_NAME" || {
+ansible-playbook k3s/playbooks/99-teardown.yml --limit "$NODE_NAME" || {
     echo "⚠️  Warning: Uninstall playbook failed"
 }
 

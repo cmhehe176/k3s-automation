@@ -29,19 +29,19 @@ echo "🚀 Bootstrapping K3s cluster on $CONTROL_NODE..."
 echo ""
 
 echo "Step 1/4: Preparing node..."
-ansible-playbook playbooks/00-prerequisites.yml --limit "$CONTROL_NODE" || exit 1
+ansible-playbook k3s/playbooks/00-prerequisites.yml --limit "$CONTROL_NODE" || exit 1
 
 echo ""
 echo "Step 2/4: Installing K3s server..."
-ansible-playbook playbooks/01-k3s-control.yml || exit 1
+ansible-playbook k3s/playbooks/01-k3s-control.yml || exit 1
 
 echo ""
 echo "Step 3/4: Deploying Longhorn storage..."
-ansible-playbook playbooks/04-longhorn.yml || exit 1
+ansible-playbook k3s/playbooks/04-longhorn.yml || exit 1
 
 echo ""
 echo "Step 4/5: Deploying MetalLB LoadBalancer..."
-ansible-playbook playbooks/03-metallb.yml || exit 1
+ansible-playbook k3s/playbooks/03-metallb.yml || exit 1
 
 echo ""
 echo "Step 5/5: Configuring control node as dual-purpose (control+worker)..."

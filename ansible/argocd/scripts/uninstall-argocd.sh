@@ -2,7 +2,7 @@
 set -e
 
 echo "============================================"
-echo "ArgoCD Deployment"
+echo "ArgoCD Uninstallation"
 echo "============================================"
 echo ""
 
@@ -14,6 +14,18 @@ if [ ! -f "ansible.cfg" ]; then
     exit 1
 fi
 
+# Warning
+echo "⚠️  WARNING: This will remove ArgoCD and all its applications!"
+echo ""
+read -p "Are you sure you want to uninstall ArgoCD? (yes/no): " confirm
+
+if [ "$confirm" != "yes" ]; then
+    echo "❌ Uninstallation cancelled"
+    exit 0
+fi
+
+echo ""
+
 # Test connectivity
 echo "📡 Testing connectivity to $CONTROL_NODE..."
 ansible "$CONTROL_NODE" -m ping || {
@@ -24,22 +36,13 @@ ansible "$CONTROL_NODE" -m ping || {
 echo "✅ $CONTROL_NODE reachable"
 echo ""
 
-# Deploy ArgoCD
-echo "🚀 Deploying ArgoCD..."
+# Uninstall ArgoCD
+echo "🗑️  Uninstalling ArgoCD..."
 echo ""
-ansible-playbook playbooks/05-argocd.yml || exit 1
+ansible-playbook argocd/playbooks/uninstall.yml || exit 1
 
 echo ""
 echo "============================================"
-echo "✅ ArgoCD deployed successfully!"
+echo "✅ ArgoCD uninstallation completed!"
 echo "============================================"
-echo ""
-echo "Next steps:"
-echo "  1. Access ArgoCD UI at the LoadBalancer IP shown above"
-echo "  2. Login with username 'admin' and the password displayed"
-echo "  3. Change default password:"
-echo "     argocd account update-password"
-echo ""
-echo "  4. Configure your first application:"
-echo "     kubectl apply -f /path/to/application.yaml"
 echo ""

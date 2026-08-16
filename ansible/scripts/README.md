@@ -4,21 +4,30 @@ Management scripts for K3s cluster operations.
 
 ---
 
-## 📁 Available Scripts
+## 📁 Script Organization
 
-### Core Cluster Management
+Scripts are organized by application:
+
+- **K3s Core**: `k3s/scripts/` - Cluster management (bootstrap, nodes, teardown)
+- **ArgoCD**: `argocd/scripts/` - GitOps deployment
+
+---
+
+## 📋 Available Scripts
+
+### Core Cluster Management (`k3s/scripts/`)
 
 #### `bootstrap.sh`
 Bootstrap a new K3s cluster from scratch.
 
 ```bash
-./scripts/bootstrap.sh [control-node-name]
+./k3s/scripts/bootstrap.sh [control-node-name]
 
 # Default uses node-1
-./scripts/bootstrap.sh
+./k3s/scripts/bootstrap.sh
 
 # Specify custom control node
-./scripts/bootstrap.sh node-1
+./k3s/scripts/bootstrap.sh node-1
 ```
 
 **What it does:**
@@ -34,16 +43,16 @@ Bootstrap a new K3s cluster from scratch.
 Add worker nodes to existing cluster.
 
 ```bash
-./scripts/add-node.sh <node-name> [node2] [node3] ...
+./k3s/scripts/add-node.sh <node-name> [node2] [node3] ...
 
 # Add single node
-./scripts/add-node.sh node-2
+./k3s/scripts/add-node.sh node-2
 
 # Add multiple nodes
-./scripts/add-node.sh node-2 node-3 node-4
+./k3s/scripts/add-node.sh node-2 node-3 node-4
 
 # With resource limits
-./scripts/add-node.sh node-2 --memory 16G --cpu-quota 50
+./k3s/scripts/add-node.sh node-2 --memory 16G --cpu-quota 50
 ```
 
 **Features:**
@@ -57,10 +66,10 @@ Add worker nodes to existing cluster.
 Remove a specific worker node from cluster.
 
 ```bash
-./scripts/remove-node.sh <node-name>
+./k3s/scripts/remove-node.sh <node-name>
 
 # Example
-./scripts/remove-node.sh node-2
+./k3s/scripts/remove-node.sh node-2
 ```
 
 **What it does:**
@@ -75,17 +84,17 @@ Teardown cluster - flexible options for different scenarios.
 
 ```bash
 # Remove entire cluster
-./scripts/teardown.sh --all
+./k3s/scripts/teardown.sh --all
 
 # Remove specific nodes
-./scripts/teardown.sh --node node-2
-./scripts/teardown.sh --node node-2 --node node-3
+./k3s/scripts/teardown.sh --node node-2
+./k3s/scripts/teardown.sh --node node-2 --node node-3
 
 # Remove all workers (keep control plane)
-./scripts/teardown.sh --workers
+./k3s/scripts/teardown.sh --workers
 
 # Remove control plane (destroys cluster!)
-./scripts/teardown.sh --control
+./k3s/scripts/teardown.sh --control
 ```
 
 **Options:**
@@ -96,13 +105,13 @@ Teardown cluster - flexible options for different scenarios.
 
 ---
 
-### ArgoCD Management
+### ArgoCD Management (`argocd/scripts/`)
 
 #### `deploy-argocd.sh`
 Deploy ArgoCD to the cluster.
 
 ```bash
-./scripts/deploy-argocd.sh
+./argocd/scripts/deploy-argocd.sh
 ```
 
 **What it does:**
@@ -117,7 +126,7 @@ Deploy ArgoCD to the cluster.
 Remove ArgoCD from the cluster.
 
 ```bash
-./scripts/uninstall-argocd.sh
+./argocd/scripts/uninstall-argocd.sh
 ```
 
 **What it does:**
@@ -134,37 +143,37 @@ Remove ArgoCD from the cluster.
 cd ansible/
 
 # 1. Bootstrap cluster
-./scripts/bootstrap.sh
+./k3s/scripts/bootstrap.sh
 
 # 2. Add worker nodes
-./scripts/add-node.sh node-2 node-3
+./k3s/scripts/add-node.sh node-2 node-3
 
 # 3. Deploy ArgoCD (optional)
-./scripts/deploy-argocd.sh
+./argocd/scripts/deploy-argocd.sh
 ```
 
 ### Add/Remove Nodes
 ```bash
 # Add a new worker
-./scripts/add-node.sh node-4
+./k3s/scripts/add-node.sh node-4
 
 # Remove a worker
-./scripts/remove-node.sh node-4
+./k3s/scripts/remove-node.sh node-4
 ```
 
 ### Complete Teardown
 ```bash
 # Remove everything
-./scripts/teardown.sh --all
+./k3s/scripts/teardown.sh --all
 ```
 
 ### Partial Teardown
 ```bash
 # Keep control plane, remove workers
-./scripts/teardown.sh --workers
+./k3s/scripts/teardown.sh --workers
 
 # Then re-add workers
-./scripts/add-node.sh node-2 node-3
+./k3s/scripts/add-node.sh node-2 node-3
 ```
 
 ---
@@ -175,7 +184,8 @@ All scripts must be run from the `ansible/` directory:
 
 ```bash
 cd /path/to/k3s-automation/ansible
-./scripts/<script-name>.sh
+./k3s/scripts/<script-name>.sh
+./argocd/scripts/<script-name>.sh
 ```
 
 **Requirements:**
@@ -188,8 +198,7 @@ cd /path/to/k3s-automation/ansible
 
 ## 🔗 Related Documentation
 
-- [Deployment Guide](../docs/guides/deployment.md) - Complete setup guide
-- [Add Nodes Guide](../docs/guides/add-nodes.md) - Detailed node management
+- [Complete Guide](../../COMPLETE_GUIDE.md) - Full deployment guide
 - [Inventory Configuration](../docs/reference/inventory.md) - Inventory setup
 
 ---

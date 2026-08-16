@@ -178,7 +178,7 @@ for node in "${NODES[@]}"; do
 
     echo ""
     echo "Step 1/3: Preparing $node..."
-    ansible-playbook playbooks/00-prerequisites.yml --limit "$node" || {
+    ansible-playbook k3s/playbooks/00-prerequisites.yml --limit "$node" || {
         echo "❌ Failed to prepare $node"
         exit 1
     }
@@ -187,7 +187,7 @@ for node in "${NODES[@]}"; do
     echo "Step 2/3: Joining $node to cluster..."
 
     # Use main inventory with --limit to target specific node
-    ansible-playbook playbooks/02-k3s-workers.yml --limit "$node" || {
+    ansible-playbook k3s/playbooks/02-k3s-workers.yml --limit "$node" || {
         echo "❌ Failed to join $node"
         exit 1
     }

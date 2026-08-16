@@ -13,10 +13,10 @@ nano inventory/hosts.ini          # Set node IPs
 nano inventory/group_vars/all.yml # Set MetalLB IP range
 
 # 2. Bootstrap cluster
-./scripts/bootstrap.sh
+./k3s/scripts/bootstrap.sh
 
 # 3. Add workers
-./scripts/add-node.sh node-2 node-3
+./k3s/scripts/add-node.sh node-2 node-3
 
 # 4. Verify
 export KUBECONFIG=~/.kube/config-k3s
@@ -49,12 +49,12 @@ kubectl get nodes
 
 | Script | Purpose |
 |--------|---------|
-| `scripts/bootstrap.sh` | Initialize cluster (control plane + storage + LoadBalancer) |
-| `scripts/add-node.sh` | Add worker nodes |
-| `scripts/remove-node.sh` | Remove specific node |
-| `scripts/teardown.sh` | Flexible cluster teardown (all/specific/workers) |
-| `scripts/deploy-argocd.sh` | Deploy ArgoCD GitOps |
-| `scripts/uninstall-argocd.sh` | Remove ArgoCD |
+| `k3s/scripts/bootstrap.sh` | Initialize cluster (control plane + storage + LoadBalancer) |
+| `k3s/scripts/add-node.sh` | Add worker nodes |
+| `k3s/scripts/remove-node.sh` | Remove specific node |
+| `k3s/scripts/teardown.sh` | Flexible cluster teardown (all/specific/workers) |
+| `argocd/scripts/deploy-argocd.sh` | Deploy ArgoCD GitOps |
+| `argocd/scripts/uninstall-argocd.sh` | Remove ArgoCD |
 
 See [Scripts README](ansible/scripts/README.md) for detailed usage.
 
@@ -78,15 +78,16 @@ k3s-automation/
 ├── COMPLETE_GUIDE.md          # Complete documentation
 ├── README.md                  # This file
 ├── ansible/
-│   ├── scripts/               # Management scripts
-│   │   ├── bootstrap.sh
-│   │   ├── add-node.sh
-│   │   ├── remove-node.sh
-│   │   ├── teardown.sh
-│   │   └── ...
-│   ├── inventory/             # Node configuration
-│   ├── playbooks/             # Ansible playbooks
-│   └── roles/                 # Ansible roles
+│   ├── inventory/             # Node configuration (shared)
+│   ├── k3s/                   # K3s cluster core
+│   │   ├── playbooks/         # K3s playbooks
+│   │   ├── roles/             # K3s roles
+│   │   └── scripts/           # Cluster management scripts
+│   ├── argocd/                # ArgoCD GitOps
+│   │   ├── playbooks/         # ArgoCD playbooks
+│   │   ├── roles/             # ArgoCD role
+│   │   └── scripts/           # ArgoCD management scripts
+│   └── ansible.cfg            # Ansible configuration
 └── docs/                      # Specialized documentation
     ├── operations/            # Security, requirements
     └── reference/             # Inventory config, troubleshooting
@@ -98,19 +99,19 @@ k3s-automation/
 
 ```bash
 # Add new worker node
-./scripts/add-node.sh node-4
+./k3s/scripts/add-node.sh node-4
 
 # Deploy ArgoCD
-./scripts/deploy-argocd.sh
+./argocd/scripts/deploy-argocd.sh
 
 # Remove a node
-./scripts/remove-node.sh node-2
+./k3s/scripts/remove-node.sh node-2
 
 # Teardown entire cluster
-./scripts/teardown.sh --all
+./k3s/scripts/teardown.sh --all
 
 # Teardown workers only
-./scripts/teardown.sh --workers
+./k3s/scripts/teardown.sh --workers
 ```
 
 ---

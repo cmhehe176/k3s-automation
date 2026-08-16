@@ -144,7 +144,7 @@ fi
 
 # Run teardown playbook
 echo "Running teardown playbook..."
-ansible-playbook playbooks/99-teardown.yml --limit "$TARGET_LIMIT" || {
+ansible-playbook k3s/playbooks/99-teardown.yml --limit "$TARGET_LIMIT" || {
     echo "⚠️  Warning: Teardown playbook encountered errors"
 }
 
