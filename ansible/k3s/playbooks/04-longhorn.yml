@@ -43,10 +43,14 @@
         var: longhorn_pods.stdout_lines
       when: wait_result is failed
 
+    - name: Remove default annotation from local-path StorageClass
+      command: kubectl patch storageclass local-path -p '{"metadata":{"annotations":{"storageclass.kubernetes.io/is-default-class":"false"}}}'
+      changed_when: true
+      ignore_errors: yes
+
     - name: Set Longhorn as default StorageClass
       command: kubectl patch storageclass longhorn -p '{"metadata":{"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
       changed_when: true
-      ignore_errors: yes
 
     - name: Get StorageClasses
       command: kubectl get storageclass
