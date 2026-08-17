@@ -1,0 +1,49 @@
+---
+- name: Uninstall OpenShift Console and Dex OIDC from K3s
+  hosts: k3s_control[0]
+  become: yes
+  vars:
+    console_namespace: "openshift-console"
+    kubeconfig_path: "/etc/rancher/k3s/k3s.yaml"
+
+  tasks:
+    - name: Delete OpenShift Console namespace
+      command: kubectl delete namespace {{ console_namespace }} --timeout=60s
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      register: delete_ns
+      failed_when: false
+      changed_when: delete_ns.rc == 0
+
+    - name: Delete OpenShift RBAC bindings
+      command: >
+        kubectl delete clusterrolebinding dex-admins-binding dex-developers-view-binding console-admin-binding
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      register: delete_crb
+      failed_when: false
+      changed_when: delete_crb.rc == 0
+
+    - name: Remove K3s OIDC drop-in configuration if present
+      file:
+        path: /etc/rancher/k3s/config.yaml.d/01-oidc.yaml
+        state: absent
+      register: remove_oidc
+
+    - name: Remove Dex TLS certificates and CA file
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/rancher/k3s/dex-ca.pem
+        - /etc/rancher/k3s/dex-tls
+
+    - name: Restart K3s server to clear OIDC flags
+      systemd:
+        name: k3s
+        state: restarted
+      when: remove_oidc.changed
+
+    - name: Display uninstallation status
+      debug:
+        msg: "OpenShift Console and Dex OIDC uninstalled successfully from K3s."

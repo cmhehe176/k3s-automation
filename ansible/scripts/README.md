@@ -1,118 +1,69 @@
-# 🔧 Ansible Management Scripts
+# 🔧 Ansible Management Scripts & Unified CLI
 
-Scripts are organized by application for better maintainability and scalability.
-
----
-
-## 📁 Script Organization
-
-Each application has its own scripts directory:
-
-- **[k3s/scripts/](../k3s/scripts/)** - K3s cluster management (bootstrap, nodes, teardown)
-- **[argocd/scripts/](../argocd/scripts/)** - ArgoCD GitOps deployment
+To simplify operations across K3s, ArgoCD, and KubeSphere, use the unified master wrapper script: **[`./cluster.sh`](../cluster.sh)**.
 
 ---
 
-## 🚀 Quick Navigation
+## 🚀 Unified Cluster Manager: `./cluster.sh`
 
-### K3s Cluster Management
+Run `./cluster.sh` directly from the `ansible/` root directory.
 
-| Script | Purpose |
-|--------|---------|
-| [k3s/scripts/bootstrap.sh](../k3s/scripts/README.md#bootstrapsh) | Initialize cluster |
-| [k3s/scripts/add-node.sh](../k3s/scripts/README.md#add-nodesh) | Add worker nodes |
-| [k3s/scripts/remove-node.sh](../k3s/scripts/README.md#remove-nodesh) | Remove specific node |
-| [k3s/scripts/teardown.sh](../k3s/scripts/README.md#teardownsh) | Teardown cluster |
-
-**→ [Full K3s Scripts Documentation](../k3s/scripts/README.md)**
-
-### ArgoCD Management
-
-| Script | Purpose |
-|--------|---------|
-| [argocd/scripts/deploy-argocd.sh](../argocd/scripts/README.md#deploy-argocdsh) | Deploy ArgoCD |
-| [argocd/scripts/uninstall-argocd.sh](../argocd/scripts/README.md#uninstall-argocdsh) | Remove ArgoCD |
-
-**→ [Full ArgoCD Scripts Documentation](../argocd/scripts/README.md)**
-
----
-
-## 📖 Usage
-
-All scripts must be run from the `ansible/` directory:
-
+### Interactive Menu Mode
+Simply run `./cluster.sh` without arguments to open the interactive TUI:
 ```bash
-cd /path/to/k3s-automation/ansible
-./k3s/scripts/<script-name>.sh
-./argocd/scripts/<script-name>.sh
+./cluster.sh
+```
+
+```text
+================================================================
+          🚀 K3S CLUSTER AUTOMATION MANAGER
+================================================================
+
+Select an operation:
+
+  1) 🎯 Bootstrap Control Plane (Node-1)
+  2) ➕ Add Worker Node(s)
+  3) ➖ Remove Worker Node
+  4) 📊 Cluster Status & Health Check
+  5) 💾 Backup Cluster
+  6) 🔄 Restore Cluster
+  7) 🐙 ArgoCD (Deploy / Uninstall)
+  8) 🌐 KubeSphere (Deploy / Uninstall)
+  9) 🗑️  Teardown Entire Cluster
+  0) ❌ Exit
+
+Enter choice [0-9]: 
 ```
 
 ---
 
-## 🎯 Common Workflow
+### Command Line Interface (CLI) Mode
 
-```bash
-cd ansible/
-
-# 1. Bootstrap K3s cluster
-./k3s/scripts/bootstrap.sh
-
-# 2. Add worker nodes
-./k3s/scripts/add-node.sh node-2 node-3
-
-# 3. Deploy ArgoCD (optional)
-./argocd/scripts/deploy-argocd.sh
-
-# 4. Verify
-export KUBECONFIG=~/.kube/config-k3s
-kubectl get nodes
-kubectl get pods -A
-```
+| Action | Command |
+|---|---|
+| **Bootstrap Cluster** | `./cluster.sh bootstrap [node-1]` |
+| **Add Worker Nodes** | `./cluster.sh add-node node-2 [node-3 ...]` |
+| **Remove Worker Node** | `./cluster.sh remove-node node-2` |
+| **Health Check & Pods** | `./cluster.sh status` |
+| **Backup Cluster** | `./cluster.sh backup` |
+| **Restore Cluster** | `./cluster.sh restore <backup-file>` |
+| **Deploy ArgoCD** | `./cluster.sh argocd deploy` |
+| **Uninstall ArgoCD** | `./cluster.sh argocd uninstall` |
+| **Deploy KubeSphere** | `./cluster.sh kubesphere deploy` |
+| **Uninstall KubeSphere**| `./cluster.sh kubesphere uninstall` |
+| **Teardown All** | `./cluster.sh teardown --all` |
 
 ---
 
-## 🔮 Adding New Applications
+## 📁 Component Scripts
 
-When adding new applications (e.g., Prometheus, Grafana):
+Behind the scenes, `./cluster.sh` wraps the application-specific scripts:
 
-```bash
-# Create directory structure
-mkdir -p <app-name>/{playbooks,roles,scripts}
-
-# Add scripts with documentation
-# Update ansible.cfg roles_path
-# Create <app-name>/scripts/README.md
-```
-
-Example structure:
-```
-ansible/
-├── k3s/
-├── argocd/
-└── prometheus/         # New app
-    ├── playbooks/
-    ├── roles/
-    └── scripts/
-        └── README.md   # App-specific docs
-```
-
----
-
-## 📋 Prerequisites
-
-- Ansible installed
-- SSH access to all target nodes
-- `kubectl` installed (for cluster operations)
-- Inventory file configured (`inventory/hosts.ini`)
-
----
-
-## 🔗 Related Documentation
-
-- [Complete Deployment Guide](../../../COMPLETE_GUIDE.md)
-- [Inventory Configuration](../../docs/reference/inventory.md)
-
----
-
-**Last Updated**: 2026-08-16  
-**Maintainer**: Congminh
+- **[k3s/scripts/](../k3s/scripts/)**:
+  - `bootstrap.sh` - Prerequisites + K3s server setup + Addons
+  - `add-node.sh` - Worker join with standard/flexible limits
+  - `remove-node.sh` - Drain, delete, and teardown single worker node
+  - `teardown.sh` - Complete purge & cleanup
+  - `backup.sh` / `restore.sh` - Etcd snapshots and cluster state
+- **[argocd/scripts/](../argocd/scripts/)**: `deploy-argocd.sh`, `uninstall-argocd.sh`
+- **[kubesphere/scripts/](../kubesphere/scripts/)**: `deploy-kubesphere.sh`, `uninstall-kubesphere.sh`

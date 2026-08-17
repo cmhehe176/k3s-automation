@@ -1,0 +1,71 @@
+---
+- name: Deploy Redpanda Kafka Cluster and Web Console on K3s with Longhorn Storage
+  hosts: k3s_control[0]
+  become: yes
+  vars_files:
+    - ../vars/main.yml
+
+  tasks:
+    - name: Ensure temporary manifests directory exists
+      file:
+        path: /tmp/redpanda
+        state: directory
+        mode: '0755'
+
+    - name: Render Redpanda Cluster manifest template
+      template:
+        src: ../templates/redpanda-cluster.yaml.j2
+        dest: /tmp/redpanda/redpanda-cluster.yaml
+        mode: '0644'
+
+    - name: Apply Redpanda Cluster manifests to K3s
+      command: kubectl apply -f /tmp/redpanda/redpanda-cluster.yaml
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      register: apply_redpanda
+      changed_when: "'created' in apply_redpanda.stdout or 'configured' in apply_redpanda.stdout"
+
+    - name: Wait for Redpanda pod to be ready
+      command: >
+        kubectl wait --namespace {{ redpanda_namespace }}
+        --for=condition=ready pod -l app=redpanda
+        --timeout=300s
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      register: redpanda_ready
+      retries: 20
+      delay: 5
+      until: redpanda_ready.rc == 0
+      changed_when: false
+
+    - name: Wait for Redpanda Web Console to be available
+      command: >
+        kubectl wait --namespace {{ redpanda_namespace }}
+        --for=condition=Available deployment/redpanda-console
+        --timeout=180s
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      register: console_ready
+      retries: 15
+      delay: 5
+      until: console_ready.rc == 0
+      changed_when: false
+
+    - name: Clean up temporary files
+      file:
+        path: /tmp/redpanda
+        state: absent
+
+    - name: Display Redpanda Cluster connection info
+      debug:
+        msg: |
+          ==========================================================
+          🎉 Redpanda (Kafka Streaming) deployed successfully!
+          ==========================================================
+          Namespace: {{ redpanda_namespace }}
+          Kafka Bootstrap Server: {{ ansible_host }}:{{ redpanda_kafka_nodeport }}
+          Schema Registry URL: http://{{ ansible_host }}:{{ redpanda_schema_nodeport }}
+          Redpanda Web Console: http://{{ ansible_host }}:{{ redpanda_console_nodeport }}
+          Storage: {{ redpanda_pvc_size }} (Longhorn Distributed Storage)
+          CLI Admin Check: kubectl exec -it redpanda-0 -n {{ redpanda_namespace }} -- rpk cluster info
+          ==========================================================

@@ -1,55 +1,96 @@
 ---
-- name: Check if K3s agent is already installed
+- name: Check if local K3s node token exists
+  stat:
+    path: "{{ item }}"
+  loop:
+    - "{{ playbook_dir }}/../.vault/k3s-node-token"
+    - /tmp/k3s-node-token
+  delegate_to: localhost
+  register: token_stat
+  become: no
+
+- name: Determine valid token file path
+  set_fact:
+    token_file_path: "{{ (token_stat.results | selectattr('stat.exists', 'equalto', true) | map(attribute='item') | list | first) | default('') }}"
+
+- name: Fail if node token not found
+  fail:
+    msg: |
+      K3s token not found on control machine!
+      Please deploy the control plane first:
+        ansible-playbook k3s/playbooks/01-k3s-control.yml
+  when: token_file_path == ''
+
+- name: Read K3s token from local file
+  set_fact:
+    k3s_node_token: "{{ lookup('file', token_file_path) | trim }}"
+
+- name: Create K3s configuration directory
+  file:
+    path: /etc/rancher/k3s
+    state: directory
+    mode: '0755'
+    owner: root
+    group: root
+
+- name: Deploy K3s agent configuration
+  template:
+    src: config.yaml.j2
+    dest: /etc/rancher/k3s/config.yaml
+    mode: '0600'
+    owner: root
+    group: root
+  notify: restart k3s-agent
+
+- name: Check if K3s binary exists
   stat:
     path: /usr/local/bin/k3s
   register: k3s_agent_binary
 
-- name: Check if K3s token exists locally
+- name: Check if K3s agent service file exists
   stat:
-    path: /tmp/k3s-node-token
-  delegate_to: localhost
-  register: token_file
-  become: no
+    path: /etc/systemd/system/k3s-agent.service
+  register: k3s_agent_service_file
 
-- name: Fail if token not found
-  fail:
-    msg: |
-      K3s token not found at /tmp/k3s-node-token!
-
-      Make sure control plane is already deployed:
-        cd ansible/
-        ./bootstrap.sh
-
-      Or re-run: ansible-playbook playbooks/01-k3s-control.yml
-  when: not token_file.stat.exists
-
-- name: Read K3s token from local file
-  set_fact:
-    k3s_node_token: "{{ lookup('file', '/tmp/k3s-node-token') }}"
-
-- name: Set K3s server URL
-  set_fact:
-    k3s_url: "https://{{ hostvars[groups['k3s_control'][0]]['ansible_host'] }}:6443"
-
-- name: Download K3s installation script
+- name: Attempt to download K3s installation script from get.k3s.io
   get_url:
     url: https://get.k3s.io
     dest: /tmp/k3s-install.sh
     mode: '0755'
-  when: not k3s_agent_binary.stat.exists
+    timeout: 15
+  register: k3s_agent_script_download
+  ignore_errors: yes
+  when: not k3s_agent_binary.stat.exists or not k3s_agent_service_file.stat.exists
+
+- name: Fallback to bundled local K3s installation script if download failed
+  copy:
+    src: ../../common/files/k3s-install.sh
+    dest: /tmp/k3s-install.sh
+    mode: '0755'
+  when: (not k3s_agent_binary.stat.exists or not k3s_agent_service_file.stat.exists) and (k3s_agent_script_download is failed or k3s_agent_script_download is skipped)
 
 - name: Install K3s agent
   shell: |
     INSTALL_K3S_VERSION="{{ k3s_version }}" \
-    K3S_URL="{{ k3s_url }}" \
-    K3S_TOKEN="{{ k3s_node_token }}" \
-    sh /tmp/k3s-install.sh agent \
-    {{ k3s_agent_args | join(' ') }}
-  args:
-    creates: /usr/local/bin/k3s
+    sh /tmp/k3s-install.sh agent
   environment:
     INSTALL_K3S_SKIP_START: "false"
+  when: not k3s_agent_binary.stat.exists or not k3s_agent_service_file.stat.exists
 
-- name: Wait for agent to register
-  pause:
-    seconds: 10
+- name: Flush handlers
+  meta: flush_handlers
+
+- name: Ensure K3s agent service is started and enabled
+  systemd:
+    name: k3s-agent
+    state: started
+    enabled: yes
+
+- name: Wait for agent node to be Ready in cluster
+  command: /usr/local/bin/k3s kubectl get node {{ inventory_hostname }} -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}'
+  delegate_to: "{{ groups['k3s_control'][0] }}"
+  register: agent_node_ready
+  until: agent_node_ready.stdout == "True"
+  retries: 30
+  delay: 5
+  changed_when: false

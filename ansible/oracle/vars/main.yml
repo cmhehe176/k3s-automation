@@ -1,0 +1,11 @@
+---
+oracle_namespace: "oracle"
+oracle_image: "gvenzl/oracle-free:latest"
+oracle_version_name: "Oracle Database 19c/23ai Compatible"
+oracle_sys_password: "Oracle@2026"
+oracle_app_user: "app_user"
+oracle_app_password: "App@2026"
+oracle_pvc_size: "30Gi"
+oracle_storage_class: "longhorn"
+oracle_nodeport: 31521
+kubeconfig_path: "/etc/rancher/k3s/k3s.yaml"

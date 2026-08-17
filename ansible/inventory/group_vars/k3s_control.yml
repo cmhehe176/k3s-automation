@@ -1,10 +1,9 @@
 ---
-# K3s Server Arguments
-k3s_server_args:
-  - --disable traefik
-  - --disable servicelb
-  - --write-kubeconfig-mode 644
-  - --cluster-cidr {{ cluster_cidr }}
-  - --service-cidr {{ service_cidr }}
-  - --node-name {{ inventory_hostname }}
-  - --tls-san {{ ansible_host }}
+# K3s Control Plane Configuration
+k3s_disable_components:
+  - traefik
+  - servicelb
+
+k3s_tls_san:
+  - "{{ ansible_host }}"
+  - "{{ inventory_hostname }}"

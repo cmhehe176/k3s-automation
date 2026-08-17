@@ -1,0 +1,35 @@
+---
+- name: Uninstall KubeSphere from K3s
+  hosts: k3s_control[0]
+  become: yes
+  vars:
+    kubeconfig_path: "/etc/rancher/k3s/k3s.yaml"
+
+  tasks:
+    - name: Uninstall KubeSphere Core via Helm
+      command: helm uninstall ks-core -n kubesphere-system
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      register: helm_uninstall
+      failed_when: false
+      changed_when: helm_uninstall.rc == 0
+
+    - name: Delete KubeSphere namespace
+      command: kubectl delete namespace kubesphere-system --timeout=60s
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      register: delete_ns
+      failed_when: false
+      changed_when: delete_ns.rc == 0
+
+    - name: Delete leftover KubeSphere CRDs
+      shell: |
+        kubectl get crd -o name | grep kubesphere | xargs -r kubectl delete
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      failed_when: false
+      changed_when: false
+
+    - name: Display uninstallation status
+      debug:
+        msg: "KubeSphere uninstalled successfully."

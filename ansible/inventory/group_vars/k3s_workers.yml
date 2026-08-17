@@ -1,4 +1,4 @@
 ---
-# K3s Agent Arguments
-k3s_agent_args:
-  - --node-name {{ inventory_hostname }}
+# K3s Worker Configuration
+k3s_node_label:
+  - "node-role.kubernetes.io/worker=worker"

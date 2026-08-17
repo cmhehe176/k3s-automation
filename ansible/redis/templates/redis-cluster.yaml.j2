@@ -1,0 +1,162 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ redis_namespace }}
+  labels:
+    app.kubernetes.io/name: redis
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: redis-secret
+  namespace: {{ redis_namespace }}
+type: Opaque
+stringData:
+  REDIS_PASSWORD: "{{ redis_password }}"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis-info
+  namespace: {{ redis_namespace }}
+  labels:
+    app: redis-cluster
+data:
+  HOST: "{{ ansible_host }}"
+  PORT: "{{ redis_nodeport }}"
+  PASSWORD: "{{ redis_password }}"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis-cluster-config
+  namespace: {{ redis_namespace }}
+data:
+  redis.conf: |
+    bind 0.0.0.0
+    protected-mode no
+    port 6379
+    cluster-enabled yes
+    cluster-config-file /data/nodes.conf
+    cluster-node-timeout 5000
+    cluster-announce-bus-port 16379
+    appendonly yes
+    appendfsync everysec
+    requirepass {{ redis_password }}
+    masterauth {{ redis_password }}
+    dir /data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-cluster-headless
+  namespace: {{ redis_namespace }}
+  labels:
+    app: redis-cluster
+spec:
+  clusterIP: None
+  selector:
+    app: redis-cluster
+  ports:
+  - name: client
+    port: 6379
+    targetPort: 6379
+  - name: gossip
+    port: 16379
+    targetPort: 16379
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-cluster-service
+  namespace: {{ redis_namespace }}
+  labels:
+    app: redis-cluster
+spec:
+  type: NodePort
+  selector:
+    app: redis-cluster
+  ports:
+  - name: client
+    port: 6379
+    targetPort: 6379
+    nodePort: {{ redis_nodeport }}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis-cluster
+  namespace: {{ redis_namespace }}
+  labels:
+    app: redis-cluster
+spec:
+  serviceName: redis-cluster-headless
+  replicas: {{ redis_cluster_replicas }}
+  selector:
+    matchLabels:
+      app: redis-cluster
+  template:
+    metadata:
+      labels:
+        app: redis-cluster
+    spec:
+      containers:
+      - name: redis
+        image: {{ redis_image }}
+        imagePullPolicy: IfNotPresent
+        command:
+        - "redis-server"
+        - "/etc/redis/redis.conf"
+        ports:
+        - name: client
+          containerPort: 6379
+        - name: gossip
+          containerPort: 16379
+        env:
+        - name: REDIS_PASSWORD
+          valueFrom:
+            configMapKeyRef:
+              name: redis-info
+              key: PASSWORD
+        volumeMounts:
+        - name: config
+          mountPath: /etc/redis
+        - name: redis-data
+          mountPath: /data
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        readinessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - "redis-cli -a $REDIS_PASSWORD ping | grep -q PONG"
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        livenessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - "redis-cli -a $REDIS_PASSWORD ping | grep -q PONG"
+          initialDelaySeconds: 15
+          periodSeconds: 15
+      volumes:
+      - name: config
+        configMap:
+          name: redis-cluster-config
+  volumeClaimTemplates:
+  - metadata:
+      name: redis-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: {{ redis_storage_class }}
+      resources:
+        requests:
+          storage: {{ redis_pvc_size }}

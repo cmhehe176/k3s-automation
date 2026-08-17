@@ -1,0 +1,13 @@
+---
+minio_namespace: "minio"
+minio_image: "minio/minio:RELEASE.2024-08-03T04-33-23Z"
+minio_root_user: "minioadmin"
+minio_root_password: "Minio@2026"
+minio_pvc_size: "40Gi"
+minio_storage_class: "longhorn"
+minio_api_nodeport: 31900
+minio_console_nodeport: 31901
+minio_default_buckets:
+  - "backups"
+  - "uploads"
+kubeconfig_path: "/etc/rancher/k3s/k3s.yaml"

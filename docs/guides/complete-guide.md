@@ -51,7 +51,7 @@ Automated K3s cluster deployment on bare-metal servers using Ansible. Supports:
 │  │  Node-1 (Control Plane + Worker)        │  │
 │  │  • K3s Server (API, Scheduler, etc.)    │  │
 │  │  • Runs workload pods (no taint)        │  │
-│  │  • Longhorn, MetalLB, ArgoCD            │  │
+│  │  • Longhorn, MetalLB, ArgoCD, KubeSphere │  │
 │  └──────────────────────────────────────────┘  │
 │                                                  │
 │  ┌──────────────────────────────────────────┐  │
@@ -63,9 +63,39 @@ Automated K3s cluster deployment on bare-metal servers using Ansible. Supports:
 │                                                  │
 │  Storage: Longhorn (distributed block)          │
 │  LoadBalancer: MetalLB (L2 mode)                │
-│  GitOps: ArgoCD (optional)                      │
+│  GitOps: ArgoCD (argocd namespace)              │
+│  Console: KubeSphere Core v4 (kubesphere-system)│
 └─────────────────────────────────────────────────┘
 ```
+
+### Namespace Architecture & Isolation
+
+Every system component and workload is isolated into dedicated namespaces:
+
+| Namespace | Category | Purpose | Managed By |
+|---|---|---|---|
+| `kube-system` | Core | CoreDNS, Flannel CNI, Metrics Server | K3s System |
+| `metallb-system` | Network | MetalLB Controller & Speakers | `03-metallb.yml` |
+| `longhorn-system` | Storage | Longhorn CSI, Engine & Manager | `04-longhorn.yml` |
+| `openshift-console` | Management | OpenShift Console Standalone & Dex OIDC | `openshift-console/deploy.yml` |
+| `oracle` | Database | Oracle Database 19c/23ai (Port 31521) | `oracle/deploy.yml` |
+| `redis` | Cache/Store | Redis Cluster 16k Hash Slots (Port 31379) | `redis/deploy.yml` |
+| `redpanda` | Streaming | Redpanda Kafka (Port 31092) & Console (31080) | `redpanda/deploy.yml` |
+| `minio` | Storage | MinIO S3 API (Port 31900) & Console (31901) | `minio/deploy.yml` |
+| `argocd` | GitOps | ArgoCD Server, Controller, Redis | `argocd/deploy.yml` |
+| `kubesphere-system`| Management | KubeSphere Core v4 Console & API | `kubesphere/deploy.yml` |
+
+### Resource Footprint & Hardware Sizing
+
+| Component | RAM Consumption | CPU Profile | Notes |
+|---|---|---|---|
+| **K3s Control Plane** | ~500 MB – 1 GB | 0.2 – 0.5 Core | API Server, Kine/etcd, Flannel |
+| **K3s Worker Agent** | ~150 MB – 300 MB | 0.1 – 0.2 Core | Kubelet + containerd shim |
+| **MetalLB** | ~50 MB – 100 MB | < 0.1 Core | Lightweight L2 LoadBalancer |
+| **Longhorn CSI** | ~800 MB – 1.5 GB | 0.3 – 0.8 Core | Replicated block storage & CSI |
+| **ArgoCD** | ~300 MB – 600 MB | 0.2 – 0.5 Core | GitOps continuous delivery |
+| **KubeSphere Core (v4)** | ~500 MB – 800 MB | 0.3 – 0.5 Core | Modern microkernel web console |
+| **Total Baseline Idle** | **~3.5 GB – 4.5 GB** | **~1.5 – 2.5 Cores** | Complete stack running idle |
 
 ### Pod Scheduling Behavior
 
@@ -386,6 +416,33 @@ ssh user@node "sudo journalctl -u k3s-agent -f"
 # - Resource exhaustion
 ```
 
+#### 6. Longhorn Volume Permission Denied (errno=13)
+
+**Issue**: Non-root container pods (e.g. `oracle` UID 54321, `redpanda` UID 101) crash with `Permission denied (errno=13)` when writing to mounted Longhorn volumes.
+
+**Root cause**: Newly provisioned Longhorn PVCs have root ownership (`root:root`, mode `0755`) by default.
+
+**Fix**: Add an `initContainer` running as root (`runAsUser: 0`) to grant full access before the main container starts:
+```yaml
+initContainers:
+- name: fix-permissions
+  image: busybox:latest
+  command: ["sh", "-c", "chmod -R 777 /data"]
+  volumeMounts:
+  - name: storage
+    mountPath: /data
+  securityContext:
+    runAsUser: 0
+```
+
+#### 7. Invalid NodePort Range Error
+
+**Issue**: `The Service is invalid: spec.ports[0].nodePort: Invalid value: provided port is not in the valid range.`
+
+**Root cause**: Kubernetes enforces NodePorts strictly within the `30000-32767` range.
+
+**Fix**: Ensure all custom services are assigned ports within `30000-32767` (e.g. Oracle: `31521`, Redis: `31379`, Redpanda: `31092`/`31080`, MinIO: `31900`/`31901`).
+
 ### Reset Cluster
 
 ```bash
@@ -412,52 +469,25 @@ ansible-playbook playbooks/<playbook>.yml --list-tasks
 
 ```
 k3s-automation/
-├── README.md                      # Main overview
-├── COMPLETE_GUIDE.md              # This file - complete documentation
-├── ansible/
-│   ├── ansible.cfg                # Ansible configuration
-│   ├── scripts/                   # Management scripts
-│   │   ├── README.md              # Scripts documentation
-│   │   ├── bootstrap.sh           # Initialize cluster
-│   │   ├── add-node.sh            # Add worker nodes
-│   │   ├── remove-node.sh         # Remove specific node
-│   │   ├── teardown.sh            # Flexible cluster teardown
-│   │   ├── deploy-argocd.sh       # Deploy ArgoCD
-│   │   └── uninstall-argocd.sh    # Remove ArgoCD
-│   ├── inventory/
-│   │   ├── hosts.ini              # Node IPs and users
-│   │   └── group_vars/
-│   │       ├── all.yml            # Global variables
-│   │       ├── k3s_control.yml    # Control plane vars
-│   │       └── k3s_workers.yml    # Worker vars
-│   ├── playbooks/                 # Ansible playbooks
-│   │   ├── 00-prerequisites.yml   # Prepare nodes
-│   │   ├── 01-k3s-control.yml     # K3s control plane
-│   │   ├── 02-k3s-workers.yml     # K3s workers
-│   │   ├── 03-metallb.yml         # MetalLB LoadBalancer
-│   │   ├── 04-longhorn.yml        # Longhorn storage
-│   │   ├── 05-argocd.yml          # ArgoCD deployment
-│   │   ├── 05-argocd-uninstall.yml # ArgoCD removal
-│   │   └── 99-teardown.yml        # Cluster teardown
-│   └── roles/                     # Ansible roles
-│       ├── common/                # Base OS configuration
-│       ├── k3s-server/            # Control plane setup
-│       └── k3s-agent/             # Worker setup
-├── docs/
-│   ├── README.md                  # Documentation index
-│   ├── guides/
-│   │   ├── deployment.md          # Deployment guide
-│   │   └── add-nodes.md           # Node management
-│   ├── operations/
-│   │   ├── requirements.md        # System requirements
-│   │   ├── security.md            # Security practices
-│   │   ├── brainstorm.md          # Architecture notes
-│   │   └── code-review.md         # Code review
-│   └── reference/
-│       ├── inventory.md           # Inventory config
-│       └── fedora-notes.md        # Fedora-specific notes
-└── manifests/
-    └── namespaces.yaml            # Base K8s manifests
+├── cluster.sh                 # Root CLI & TUI wrapper
+├── README.md                  # Landing page
+├── docs/                      # Centralized documentation
+│   ├── README.md              # Documentation sitemap
+│   ├── guides/                # Step-by-step guides (this guide)
+│   ├── operations/            # Requirements, security, brainstorm
+│   ├── reference/             # Inventory config, fedora notes
+│   └── reviews/               # Code reviews and audits
+└── ansible/                   # Automation codebase
+    ├── cluster.sh             # Master CLI & TUI script
+    ├── inventory/             # Hosts & group_vars
+    ├── k3s/                   # Core K3s, MetalLB, Longhorn, Teardown
+    ├── openshift-console/     # OpenShift Console & Dex OIDC
+    ├── oracle/                # Oracle Database 19c/23ai
+    ├── redis/                 # Redis Cluster
+    ├── redpanda/              # Redpanda Kafka & Console
+    ├── minio/                 # MinIO S3 & Console
+    ├── argocd/                # ArgoCD GitOps
+    └── kubesphere/            # KubeSphere Core v4
 ```
 
 ---

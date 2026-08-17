@@ -2,23 +2,18 @@
 - name: Cài K3s Workers
   hosts: k3s_workers
   gather_facts: yes
+  become: yes
   serial: 1
   roles:
     - k3s-agent
 
-  post_tasks:
-    - name: Verify K3s agent is running
-      systemd:
-        name: k3s-agent
-        state: started
-        enabled: yes
-
 - name: Verify cluster nodes
   hosts: k3s_control[0]
   gather_facts: no
+  become: yes
   tasks:
     - name: Get all nodes
-      command: kubectl get nodes -o wide
+      command: /usr/local/bin/k3s kubectl get nodes -o wide
       register: all_nodes
       changed_when: false
 

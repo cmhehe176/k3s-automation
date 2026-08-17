@@ -1,0 +1,61 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: dex-admins-binding
+subjects:
+- kind: Group
+  name: admins
+  apiGroup: rbac.authorization.k8s.io
+{% for u in console_users %}
+{% if 'admins' in u.groups %}
+- kind: User
+  name: {{ u.email }}
+  apiGroup: rbac.authorization.k8s.io
+{% endif %}
+{% endfor %}
+roleRef:
+  kind: ClusterRole
+  name: cluster-admin
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: dex-developers-view-binding
+subjects:
+- kind: Group
+  name: developers
+  apiGroup: rbac.authorization.k8s.io
+{% for u in console_users %}
+{% if 'developers' in u.groups %}
+- kind: User
+  name: {{ u.email }}
+  apiGroup: rbac.authorization.k8s.io
+{% endif %}
+{% endfor %}
+roleRef:
+  kind: ClusterRole
+  name: view
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: dex-developers-default-binding
+  namespace: default
+subjects:
+- kind: Group
+  name: developers
+  apiGroup: rbac.authorization.k8s.io
+{% for u in console_users %}
+{% if 'developers' in u.groups %}
+- kind: User
+  name: {{ u.email }}
+  apiGroup: rbac.authorization.k8s.io
+{% endif %}
+{% endfor %}
+roleRef:
+  kind: ClusterRole
+  name: edit
+  apiGroup: rbac.authorization.k8s.io

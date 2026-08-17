@@ -1,0 +1,234 @@
+---
+- name: Deploy OpenShift Console Standalone with Dex OIDC Authentication on K3s
+  hosts: k3s_control[0]
+  become: yes
+  gather_facts: yes
+  vars_files:
+    - ../vars/users.yml
+
+  vars:
+    console_namespace: "openshift-console"
+    console_image: "quay.io/openshift/origin-console:latest"
+    console_service_type: "NodePort"
+    node_ip: "{{ ansible_default_ipv4.address | default(ansible_host) }}"
+    kubeconfig_path: "/etc/rancher/k3s/k3s.yaml"
+
+  tasks:
+    - name: Ensure control node hostname/domain resolves locally in /etc/hosts
+      lineinfile:
+        path: /etc/hosts
+        line: "127.0.0.1 {{ ansible_host }}"
+        state: present
+
+    - name: Ensure temporary destination directory exists
+      file:
+        path: /tmp/openshift-console
+        state: directory
+        mode: '0755'
+
+    - name: Generate TLS certificates for Dex OIDC
+      shell: |
+        set -e
+        mkdir -p /etc/rancher/k3s/dex-tls
+        cd /etc/rancher/k3s/dex-tls
+        
+        if [ ! -f ca.crt ] || [ ! -f tls.crt ]; then
+          cat <<EOF > ca.cnf
+        [ req ]
+        distinguished_name = req_distinguished_name
+        x509_extensions = v3_ca
+        prompt = no
+        [ req_distinguished_name ]
+        CN = dex-ca
+        [ v3_ca ]
+        basicConstraints = critical, CA:TRUE
+        keyUsage = critical, digitalSignature, cRLSign, keyCertSign
+        subjectKeyIdentifier = hash
+        authorityKeyIdentifier = keyid:always,issuer
+        EOF
+
+          cat <<EOF > server.cnf
+        [ req ]
+        distinguished_name = req_distinguished_name
+        prompt = no
+        [ req_distinguished_name ]
+        CN = {{ ansible_host }}
+        [ v3_server ]
+        basicConstraints = critical, CA:FALSE
+        keyUsage = critical, digitalSignature, keyEncipherment
+        extendedKeyUsage = serverAuth, clientAuth
+        subjectAltName = @alt_names
+        [ alt_names ]
+        DNS.1 = {{ ansible_host }}
+        DNS.2 = dex
+        DNS.3 = dex.{{ console_namespace }}.svc.cluster.local
+        IP.1 = {{ node_ip }}
+        IP.2 = 127.0.0.1
+        EOF
+
+          openssl genrsa -out ca.key 2048
+          openssl req -x509 -new -nodes -key ca.key -days 3650 -config ca.cnf -out ca.crt
+
+          openssl genrsa -out tls.key 2048
+          openssl req -new -key tls.key -config server.cnf -out tls.csr
+
+          openssl x509 -req -in tls.csr -CA ca.crt -CAkey ca.key -CAcreateserial -days 3650 -extfile server.cnf -extensions v3_server -out tls.crt
+        fi
+      changed_when: false
+
+    - name: Read TLS certificate files
+      slurp:
+        src: "/etc/rancher/k3s/dex-tls/{{ item }}"
+      register: tls_files_raw
+      loop:
+        - ca.crt
+        - tls.crt
+        - tls.key
+
+    - name: Set TLS certificate base64 facts
+      set_fact:
+        dex_ca_crt_b64: "{{ tls_files_raw.results[0].content }}"
+        dex_tls_crt_b64: "{{ tls_files_raw.results[1].content }}"
+        dex_tls_key_b64: "{{ tls_files_raw.results[2].content }}"
+
+    - name: Generate bcrypt hashes and UUIDs for console users
+      script: "../scripts/generate-dex-users.py '{{ console_users | to_json }}' /tmp/openshift-console/users_hashed.json"
+      changed_when: false
+
+    - name: Read generated user hashes from file
+      slurp:
+        src: /tmp/openshift-console/users_hashed.json
+      register: users_raw
+
+    - name: Assemble user list with bcrypt hashes
+      set_fact:
+        users_with_hashes: "{{ users_raw.content | b64decode | from_json }}"
+
+    - name: Render Dex OIDC manifest template
+      template:
+        src: ../templates/dex.yaml.j2
+        dest: /tmp/openshift-console/dex.yaml
+        mode: '0644'
+
+    - name: Apply Dex OIDC manifests
+      command: kubectl apply -f /tmp/openshift-console/dex.yaml
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      register: apply_dex
+      changed_when: "'created' in apply_dex.stdout or 'configured' in apply_dex.stdout"
+
+    - name: Wait for Dex OIDC deployment to be available
+      command: >
+        kubectl wait --namespace {{ console_namespace }}
+        --for=condition=Available deployment/dex
+        --timeout=180s
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      register: dex_ready
+      retries: 20
+      delay: 5
+      until: dex_ready.rc == 0
+      changed_when: false
+
+    - name: Copy Dex CA to K3s config directory
+      copy:
+        src: /etc/rancher/k3s/dex-tls/ca.crt
+        dest: /etc/rancher/k3s/dex-ca.pem
+        remote_src: yes
+        mode: '0644'
+      register: dex_ca_copy
+
+    - name: Ensure K3s config.yaml.d directory exists
+      file:
+        path: /etc/rancher/k3s/config.yaml.d
+        state: directory
+        mode: '0755'
+
+    - name: Configure K3s API server OIDC flags
+      copy:
+        dest: /etc/rancher/k3s/config.yaml.d/01-oidc.yaml
+        mode: '0600'
+        content: |
+          kube-apiserver-arg:
+            - "oidc-issuer-url=https://{{ ansible_host }}:{{ console_oidc_port }}"
+            - "oidc-client-id={{ console_client_id }}"
+            - "oidc-username-claim=email"
+            - "oidc-groups-claim=groups"
+            - "oidc-ca-file=/etc/rancher/k3s/dex-ca.pem"
+      register: k3s_oidc_config
+
+    - name: Restart K3s server to sync with Dex OIDC
+      systemd:
+        name: k3s
+        state: restarted
+      when: (k3s_oidc_config.changed | default(false)) or (dex_ca_copy.changed | default(false)) or (apply_dex.changed | default(false))
+
+    - name: Wait for K3s API server to be responsive
+      wait_for:
+        port: 6443
+        delay: 5
+        timeout: 120
+      when: (k3s_oidc_config.changed | default(false)) or (dex_ca_copy.changed | default(false)) or (apply_dex.changed | default(false))
+
+    - name: Render OpenShift Console manifest template
+      template:
+        src: ../templates/openshift-console.yaml.j2
+        dest: /tmp/openshift-console/console.yaml
+        mode: '0644'
+
+    - name: Apply OpenShift Console manifests
+      command: kubectl apply -f /tmp/openshift-console/console.yaml
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      register: apply_console
+      changed_when: "'created' in apply_console.stdout or 'configured' in apply_console.stdout"
+
+    - name: Restart OpenShift Console deployment to reload changes
+      command: kubectl rollout restart deployment/openshift-console -n {{ console_namespace }}
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      changed_when: true
+
+    - name: Wait for OpenShift Console deployment to be available
+      command: >
+        kubectl rollout status deployment/openshift-console
+        --namespace {{ console_namespace }}
+        --timeout=300s
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      register: console_ready
+      changed_when: false
+
+    - name: Render RBAC manifest template
+      template:
+        src: ../templates/rbac.yaml.j2
+        dest: /tmp/openshift-console/rbac.yaml
+        mode: '0644'
+
+    - name: Apply RBAC manifests
+      command: kubectl apply -f /tmp/openshift-console/rbac.yaml
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      register: apply_rbac
+      changed_when: "'created' in apply_rbac.stdout or 'configured' in apply_rbac.stdout"
+
+    - name: Clean up temporary files
+      file:
+        path: /tmp/openshift-console
+        state: absent
+
+    - name: Display OpenShift Console access information
+      debug:
+        msg: |
+          ==========================================================
+          🎉 OpenShift Console + Dex OIDC deployed successfully!
+          ==========================================================
+          Console URL: http://{{ ansible_host }}:{{ console_nodeport }}
+          Dex Login Page: https://{{ ansible_host }}:{{ console_oidc_port }}
+          Authentication: Native Web Form (Dex OpenID Connect)
+
+          Configured Accounts:
+          {% for u in console_users %}
+            * Email: {{ u.email }} | Password: {{ u.password }} | Group: {{ u.groups | join(', ') }}
+          {% endfor %}
+          ==========================================================

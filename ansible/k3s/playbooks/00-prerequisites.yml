@@ -2,24 +2,11 @@
 - name: Chuẩn bị nodes cho K3s cluster
   hosts: k3s_cluster
   gather_facts: yes
+  become: yes
   roles:
     - common
 
-  tasks:
-    - name: Install Python kubernetes library (Fedora/RHEL)
-      package:
-        name: python3-kubernetes
-        state: present
-      become: yes
-      when: ansible_os_family == "RedHat"
-
-    - name: Install Python kubernetes library (Debian/Ubuntu)
-      package:
-        name: python3-kubernetes
-        state: present
-      become: yes
-      when: ansible_os_family == "Debian"
-
+  post_tasks:
     - name: Display node information
       debug:
         msg: "Configured {{ inventory_hostname }} ({{ ansible_host }}) - {{ ansible_distribution }} {{ ansible_distribution_version }}"

@@ -2,6 +2,7 @@
 - name: Deploy ArgoCD
   hosts: k3s_control[0]
   gather_facts: no
+  become: yes
 
   vars:
     argocd_namespace: "argocd"
@@ -13,8 +14,27 @@
       failed_when: ns_create.rc != 0 and 'AlreadyExists' not in ns_create.stderr
       changed_when: ns_create.rc == 0
 
+    - name: Attempt to fetch ArgoCD manifest from remote mirrors
+      shell: |
+        curl -fsSL --connect-timeout 10 --max-time 30 "https://raw.githubusercontent.com/argoproj/argo-cd/{{ argocd_version }}/manifests/install.yaml" -o /tmp/argocd-install.yaml || \
+        curl -fsSL --connect-timeout 10 --max-time 30 "https://cdn.jsdelivr.net/gh/argoproj/argo-cd@{{ argocd_version }}/manifests/install.yaml" -o /tmp/argocd-install.yaml || true
+      register: download_result
+      changed_when: false
+
+    - name: Check if downloaded ArgoCD manifest is valid
+      stat:
+        path: /tmp/argocd-install.yaml
+      register: manifest_file
+
+    - name: Fallback to bundled local ArgoCD manifest if remote download failed
+      copy:
+        src: ../manifests/argocd-v2.12.0.yaml
+        dest: /tmp/argocd-install.yaml
+        mode: '0644'
+      when: not manifest_file.stat.exists or (manifest_file.stat.size | default(0)) < 10000
+
     - name: Apply ArgoCD manifest
-      command: kubectl apply -n {{ argocd_namespace }} -f https://raw.githubusercontent.com/argoproj/argo-cd/{{ argocd_version }}/manifests/install.yaml
+      command: kubectl apply -n {{ argocd_namespace }} -f /tmp/argocd-install.yaml
       changed_when: true
 
     - name: Wait for ArgoCD pods to be created

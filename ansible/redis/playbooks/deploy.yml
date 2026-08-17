@@ -1,0 +1,78 @@
+---
+- name: Deploy Redis Cluster on K3s with Longhorn Storage
+  hosts: k3s_control[0]
+  become: yes
+  vars_files:
+    - ../vars/main.yml
+
+  tasks:
+    - name: Ensure temporary manifests directory exists
+      file:
+        path: /tmp/redis
+        state: directory
+        mode: '0755'
+
+    - name: Render Redis Cluster manifest template
+      template:
+        src: ../templates/redis-cluster.yaml.j2
+        dest: /tmp/redis/redis-cluster.yaml
+        mode: '0644'
+
+    - name: Apply Redis Cluster manifests to K3s
+      command: kubectl apply -f /tmp/redis/redis-cluster.yaml
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      register: apply_redis
+      changed_when: "'created' in apply_redis.stdout or 'configured' in apply_redis.stdout"
+
+    - name: Wait for Redis Cluster StatefulSet rollout to complete
+      command: >
+        kubectl rollout status statefulset/redis-cluster
+        --namespace {{ redis_namespace }}
+        --timeout=300s
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      register: redis_ready
+      retries: 20
+      delay: 5
+      until: redis_ready.rc == 0
+      changed_when: false
+
+    - name: Check if Redis Cluster is already initialized
+      shell: |
+        kubectl --kubeconfig {{ kubeconfig_path }} exec -n {{ redis_namespace }} redis-cluster-0 -- \
+          redis-cli -a "{{ redis_password }}" cluster info | grep "cluster_state:ok" || true
+      register: cluster_info
+      changed_when: false
+
+    - name: Initialize Redis Cluster Hash Slots
+      shell: |
+        POD_IPS=$(kubectl --kubeconfig {{ kubeconfig_path }} get pods -n {{ redis_namespace }} -l app=redis-cluster -o jsonpath='{range .items[?(@.status.podIP)]}{.status.podIP}:6379 {end}' | xargs)
+        if [ -n "$POD_IPS" ]; then
+          kubectl --kubeconfig {{ kubeconfig_path }} exec -n {{ redis_namespace }} redis-cluster-0 -- \
+            redis-cli -a "{{ redis_password }}" --cluster create $POD_IPS --cluster-replicas 0 --cluster-yes
+        fi
+      when: "'cluster_state:ok' not in cluster_info.stdout"
+      register: cluster_init
+      changed_when: true
+      ignore_errors: yes
+
+    - name: Clean up temporary files
+      file:
+        path: /tmp/redis
+        state: absent
+
+    - name: Display Redis Cluster connection info
+      debug:
+        msg: |
+          ==========================================================
+          🎉 Redis Cluster deployed successfully!
+          ==========================================================
+          Namespace: {{ redis_namespace }}
+          Host: {{ ansible_host }}
+          Port: {{ redis_nodeport }}
+          Auth Password: {{ redis_password }}
+          Mode: Redis Cluster (16,384 Hash Slots, Multi-Node)
+          Storage: {{ redis_pvc_size }} per node (Longhorn Distributed Storage)
+          CLI Connect: redis-cli -c -h {{ ansible_host }} -p {{ redis_nodeport }} -a {{ redis_password }}
+          ==========================================================

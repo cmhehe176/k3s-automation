@@ -2,14 +2,47 @@
 - name: Deploy MetalLB LoadBalancer
   hosts: k3s_control[0]
   gather_facts: no
+  become: yes
 
   tasks:
+    - name: Attempt to fetch MetalLB manifest from remote mirrors
+      shell: |
+        curl -fsSL --connect-timeout 10 --max-time 30 "https://raw.githubusercontent.com/metallb/metallb/{{ metallb_version }}/config/manifests/metallb-native.yaml" -o /tmp/metallb.yaml || \
+        curl -fsSL --connect-timeout 10 --max-time 30 "https://cdn.jsdelivr.net/gh/metallb/metallb@{{ metallb_version }}/config/manifests/metallb-native.yaml" -o /tmp/metallb.yaml || \
+        curl -fsSL --connect-timeout 10 --max-time 30 "https://github.com/metallb/metallb/releases/download/{{ metallb_version }}/metallb-native.yaml" -o /tmp/metallb.yaml || true
+      register: download_result
+      changed_when: false
+
+    - name: Check if downloaded MetalLB manifest is valid
+      stat:
+        path: /tmp/metallb.yaml
+      register: manifest_file
+
+    - name: Fallback to bundled local MetalLB manifest if remote download failed
+      copy:
+        src: ../manifests/metallb-v0.14.8.yaml
+        dest: /tmp/metallb.yaml
+        mode: '0644'
+      when: not manifest_file.stat.exists or (manifest_file.stat.size | default(0)) < 10000
+
     - name: Apply MetalLB manifest
-      command: kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/{{ metallb_version }}/config/manifests/metallb-native.yaml
+      command: kubectl apply -f /tmp/metallb.yaml
       changed_when: true
+
+    - name: Wait for MetalLB pods to exist
+      command: kubectl get pods -n metallb-system -l app=metallb -o jsonpath='{.items[0].metadata.name}'
+      register: metallb_pods_exist
+      retries: 30
+      delay: 3
+      until: metallb_pods_exist.rc == 0 and metallb_pods_exist.stdout != ""
+      changed_when: false
 
     - name: Wait for MetalLB pods to be ready
       command: kubectl wait --namespace metallb-system --for=condition=ready pod --selector=app=metallb --timeout=300s
+      register: metallb_ready
+      retries: 30
+      delay: 3
+      until: metallb_ready.rc == 0
       changed_when: false
 
     - name: Create MetalLB IPAddressPool

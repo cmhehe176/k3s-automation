@@ -1,0 +1,11 @@
+---
+redpanda_namespace: "redpanda"
+redpanda_image: "docker.redpanda.com/redpandadata/redpanda:v24.1.8"
+redpanda_console_image: "docker.redpanda.com/redpandadata/console:v2.7.2"
+redpanda_replicas: 1
+redpanda_pvc_size: "20Gi"
+redpanda_storage_class: "longhorn"
+redpanda_kafka_nodeport: 31092
+redpanda_schema_nodeport: 31081
+redpanda_console_nodeport: 31080
+kubeconfig_path: "/etc/rancher/k3s/k3s.yaml"

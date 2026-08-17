@@ -1,32 +1,81 @@
 ---
-- name: Check if K3s is already installed
+- name: Create K3s configuration directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+    owner: root
+    group: root
+  loop:
+    - /etc/rancher/k3s
+    - /etc/rancher/k3s/config.yaml.d
+
+- name: Deploy K3s server configuration
+  template:
+    src: config.yaml.j2
+    dest: /etc/rancher/k3s/config.yaml
+    mode: '0600'
+    owner: root
+    group: root
+  notify: restart k3s
+
+- name: Check if K3s binary exists
   stat:
     path: /usr/local/bin/k3s
   register: k3s_binary
 
-- name: Download K3s installation script
+- name: Check if K3s service file exists
+  stat:
+    path: /etc/systemd/system/k3s.service
+  register: k3s_service_file
+
+- name: Attempt to download K3s installation script from get.k3s.io
   get_url:
     url: https://get.k3s.io
     dest: /tmp/k3s-install.sh
     mode: '0755'
-  when: not k3s_binary.stat.exists
+    timeout: 15
+  register: k3s_script_download
+  ignore_errors: yes
+  when: not k3s_binary.stat.exists or not k3s_service_file.stat.exists
+
+- name: Fallback to bundled local K3s installation script if download failed
+  copy:
+    src: ../../common/files/k3s-install.sh
+    dest: /tmp/k3s-install.sh
+    mode: '0755'
+  when: (not k3s_binary.stat.exists or not k3s_service_file.stat.exists) and (k3s_script_download is failed or k3s_script_download is skipped)
 
 - name: Install K3s server
   shell: |
     INSTALL_K3S_VERSION="{{ k3s_version }}" \
-    K3S_TOKEN="{{ k3s_token }}" \
-    sh /tmp/k3s-install.sh server \
-    {{ k3s_server_args | join(' ') }}
-  args:
-    creates: /usr/local/bin/k3s
+    sh /tmp/k3s-install.sh server
   environment:
     INSTALL_K3S_SKIP_START: "false"
+  when: not k3s_binary.stat.exists or not k3s_service_file.stat.exists
 
-- name: Wait for K3s to be ready
+- name: Flush handlers to apply config changes
+  meta: flush_handlers
+
+- name: Ensure K3s service is started and enabled
+  systemd:
+    name: k3s
+    state: started
+    enabled: yes
+
+- name: Wait for K3s API server to be ready
   wait_for:
     port: 6443
     delay: 5
     timeout: 300
+
+- name: Wait for K3s node to be in Ready status
+  command: /usr/local/bin/k3s kubectl get node {{ inventory_hostname }} -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}'
+  register: node_ready
+  until: node_ready.stdout == "True"
+  retries: 30
+  delay: 5
+  changed_when: false
 
 - name: Create kubectl symlink
   file:
@@ -47,7 +96,7 @@
     state: directory
     mode: '0755'
 
-- name: Copy kubeconfig to root
+- name: Copy kubeconfig to root .kube/config
   copy:
     src: /etc/rancher/k3s/k3s.yaml
     dest: /root/.kube/config
@@ -59,16 +108,27 @@
     src: /var/lib/rancher/k3s/server/node-token
   register: node_token
 
-- name: Save token locally (encrypted)
+- name: Ensure .vault directory exists locally
+  file:
+    path: "{{ playbook_dir }}/../.vault"
+    state: directory
+    mode: '0700'
+  delegate_to: localhost
+  become: no
+
+- name: Save node token locally
   copy:
     content: "{{ node_token.content | b64decode }}"
-    dest: "{{ playbook_dir }}/../.vault/k3s-node-token"
+    dest: "{{ item }}"
     mode: '0600'
+  loop:
+    - "{{ playbook_dir }}/../.vault/k3s-node-token"
+    - /tmp/k3s-node-token
   delegate_to: localhost
   become: no
   no_log: true
 
-- name: Encrypt token with ansible-vault
+- name: Encrypt token with ansible-vault if configured
   command: ansible-vault encrypt "{{ playbook_dir }}/../.vault/k3s-node-token"
   delegate_to: localhost
   become: no
@@ -81,7 +141,7 @@
     dest: ~/.kube/config-k3s
     flat: yes
 
-- name: Update kubeconfig server address
+- name: Update kubeconfig server address with target host IP
   replace:
     path: ~/.kube/config-k3s
     regexp: 'https://127.0.0.1:6443'

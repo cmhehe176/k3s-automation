@@ -1,100 +1,59 @@
-# 📚 K3s Automation Documentation
+# 📚 K3s Automation Documentation Hub
 
-**Version**: 2.0  
-**Last Updated**: 2026-08-17
-
----
-
-## 📖 Main Documentation
-
-### 🚀 Getting Started
-
-**→ [COMPLETE_GUIDE.md](../COMPLETE_GUIDE.md)** - **START HERE!**
-
-Comprehensive guide covering:
-- Quick start (5 minutes to running cluster)
-- Architecture overview
-- All scripts usage (bootstrap, add-node, teardown, ArgoCD)
-- Pod scheduling & load balancing
-- Troubleshooting
-- Complete examples
-
-**→ [Scripts Index](../ansible/scripts/README.md)** - Scripts navigation
-
-Quick reference:
-- K3s: `bootstrap.sh`, `add-node.sh`, `remove-node.sh`, `teardown.sh`
-- ArgoCD: `deploy-argocd.sh`, `uninstall-argocd.sh`
-
-**→ [K3s Scripts](../ansible/k3s/scripts/README.md)** - Cluster management  
-**→ [ArgoCD Scripts](../ansible/argocd/scripts/README.md)** - GitOps deployment
+Welcome to the centralized documentation index for the K3s Automation project.
 
 ---
 
-## 📂 Specialized Documentation
+## 🚀 Guides
 
-### Operations
+Step-by-step installation, operations, and troubleshooting walkthroughs:
 
-- **[Requirements](operations/requirements.md)** - System requirements and prerequisites
-- **[Security](operations/security.md)** - Security best practices and hardening
-- **[Brainstorm](operations/brainstorm.md)** - Architecture decisions and design notes
-- **[Code Review](operations/code-review.md)** - Code review findings
-
-### Reference
-
-- **[Inventory Configuration](reference/inventory.md)** - Ansible inventory setup
-- **[Fedora Notes](reference/fedora-notes.md)** - Fedora-specific configurations
+- 📖 **[Complete Documentation Guide](guides/complete-guide.md)** — **Start here!** Full architectural breakdown, installation walkthrough, resource sizing, namespace topology, and common troubleshooting tips.
+- 💻 **[CLI & TUI Management Guide](../ansible/scripts/README.md)** — Complete command reference for `./cluster.sh` (bootstrap, add-node, teardown, middleware, console).
 
 ---
 
-## 🎯 Quick Navigation
+## 🏗️ Architecture & Operations
 
-### I want to...
+In-depth technical decisions, prerequisites, and operational runbooks:
 
-**Deploy a new cluster**  
-→ [COMPLETE_GUIDE.md - Quick Start](../COMPLETE_GUIDE.md#quick-start)
-
-**Add worker nodes**  
-→ [COMPLETE_GUIDE.md - Cluster Management](../COMPLETE_GUIDE.md#cluster-management)
-
-**Remove nodes or teardown**  
-→ [K3s Scripts - teardown.sh](../ansible/k3s/scripts/README.md#teardownsh)
-
-**Deploy ArgoCD**  
-→ [ArgoCD Scripts - deploy-argocd.sh](../ansible/argocd/scripts/README.md#deploy-argocdsh)
-
-**Troubleshoot issues**  
-→ [COMPLETE_GUIDE.md - Troubleshooting](../COMPLETE_GUIDE.md#troubleshooting)
-
-**Understand pod scheduling**  
-→ [COMPLETE_GUIDE.md - Pod Scheduling](../COMPLETE_GUIDE.md#pod-scheduling--load-balancing)
+- ⚙️ **[System Requirements & Sizing](operations/requirements.md)** — Minimum hardware requirements, OS compatibility (Fedora/Ubuntu), CPU/RAM resource planning, and disk partitioning.
+- 🔒 **[Security Hardening & Best Practices](operations/security.md)** — SSH key authentication, Ansible Vault encryption, sudo privilege separation, and Kubernetes RBAC.
+- 💡 **[Architecture Brainstorming & Tradeoffs](operations/brainstorm.md)** — Evaluation notes comparing vanilla K8s, K3s, OKD, OpenShift Console Standalone, and KubeSphere Core.
 
 ---
 
-## 📌 Key Concepts
+## 📖 System Reference
 
-### No Taints by Default
+Configuration details, inventory variables, and distribution-specific setup:
 
-All nodes accept pods automatically. Kubernetes scheduler distributes workloads evenly across all nodes without requiring tolerations.
-
-### Dual-Purpose Control Plane
-
-Node-1 runs both control plane components AND application workloads. No wasted resources.
-
-### Automatic Load Balancing
-
-Pods are distributed based on available resources. No manual intervention needed.
+- 📝 **[Inventory & Group Variables](reference/inventory.md)** — Configuration reference for `hosts.ini`, `all.yml`, `k3s_control.yml`, and `k3s_workers.yml`.
+- 🎩 **[Fedora / RHEL Specifics](reference/fedora-notes.md)** — NetworkManager, firewalld, SELinux, and cgroup v2 tuning on Fedora Core / Server.
 
 ---
 
-## 🔗 External Resources
+## 🔍 Code Reviews & Security Audits
 
-- [K3s Official Docs](https://docs.k3s.io/)
-- [Longhorn Documentation](https://longhorn.io/docs/)
-- [MetalLB Documentation](https://metallb.universe.tf/)
-- [ArgoCD Documentation](https://argo-cd.readthedocs.io/)
+Historical and architectural audit reports:
+
+- 📋 **[Code Quality Review](reviews/code-review.md)** — Comprehensive review of Ansible playbooks, role boundaries, and idempotency tests.
+- 🛡️ **[Deep Security & Resilience Audit](reviews/deep-review.md)** — In-depth analysis of cluster recovery, firewall safety, token persistence, and failure recovery.
+
+---
+
+## 📦 Application Sub-Modules
+
+Each middleware and platform service includes its own dedicated documentation:
+
+- 🖥️ **[OpenShift Console & Dex OIDC](../ansible/openshift-console/README.md)** — Web console deployment, OAuth2/OIDC proxying, and multi-user login.
+- 🗄️ **[Oracle Database](../ansible/oracle/README.md)** — Enterprise Oracle 19c/23ai single-instance deployment with Longhorn storage.
+- ⚡ **[Redis Cluster](../ansible/redis/README.md)** — Highly available Redis Cluster with 16,384 hash slots across 6 pods.
+- 🐼 **[Redpanda Kafka](../ansible/redpanda/README.md)** — Fast C++ Kafka-compatible streaming cluster and Redpanda Web Console.
+- 🪣 **[MinIO S3 Storage](../ansible/minio/README.md)** — S3-compatible object storage server and web management UI.
+- 🐙 **[ArgoCD](../ansible/argocd/scripts/README.md)** — GitOps continuous delivery platform.
 
 ---
 
 **Maintainer**: Congminh  
-**Repository**: `cicd-ndc/k3s-automation`  
-**Version**: 2.0
+**Version**: 2.0  
+**Status**: ✅ Production Ready

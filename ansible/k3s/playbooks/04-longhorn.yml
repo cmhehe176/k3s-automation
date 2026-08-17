@@ -2,10 +2,30 @@
 - name: Deploy Longhorn Storage
   hosts: k3s_control[0]
   gather_facts: no
-
+  become: yes
   tasks:
+    - name: Attempt to fetch Longhorn manifest from remote mirrors
+      shell: |
+        curl -fsSL --connect-timeout 10 --max-time 30 "https://raw.githubusercontent.com/longhorn/longhorn/{{ longhorn_version }}/deploy/longhorn.yaml" -o /tmp/longhorn.yaml || \
+        curl -fsSL --connect-timeout 10 --max-time 30 "https://cdn.jsdelivr.net/gh/longhorn/longhorn@{{ longhorn_version }}/deploy/longhorn.yaml" -o /tmp/longhorn.yaml || \
+        curl -fsSL --connect-timeout 10 --max-time 30 "https://github.com/longhorn/longhorn/releases/download/{{ longhorn_version }}/longhorn.yaml" -o /tmp/longhorn.yaml || true
+      register: download_result
+      changed_when: false
+
+    - name: Check if downloaded Longhorn manifest is valid
+      stat:
+        path: /tmp/longhorn.yaml
+      register: manifest_file
+
+    - name: Fallback to bundled local Longhorn manifest if remote download failed
+      copy:
+        src: ../manifests/longhorn-v1.7.1.yaml
+        dest: /tmp/longhorn.yaml
+        mode: '0644'
+      when: not manifest_file.stat.exists or (manifest_file.stat.size | default(0)) < 10000
+
     - name: Apply Longhorn manifest
-      command: kubectl apply -f https://raw.githubusercontent.com/longhorn/longhorn/{{ longhorn_version }}/deploy/longhorn.yaml
+      command: kubectl apply -f /tmp/longhorn.yaml
       changed_when: true
 
     - name: Wait for longhorn-system namespace
@@ -24,11 +44,19 @@
       until: daemonset_check.rc == 0
       changed_when: false
 
+    - name: Wait for Longhorn manager pods to exist
+      command: kubectl get pods -n longhorn-system -l app=longhorn-manager -o jsonpath='{.items[0].metadata.name}'
+      register: lh_pods_exist
+      retries: 30
+      delay: 3
+      until: lh_pods_exist.rc == 0 and lh_pods_exist.stdout != ""
+      changed_when: false
+
     - name: Wait for Longhorn manager pods to be ready
       command: kubectl wait --namespace longhorn-system --for=condition=ready pod --selector=app=longhorn-manager --timeout=300s
       register: wait_result
-      retries: 2
-      delay: 30
+      retries: 30
+      delay: 5
       until: wait_result.rc == 0
       changed_when: false
 
@@ -43,6 +71,14 @@
         var: longhorn_pods.stdout_lines
       when: wait_result is failed
 
+    - name: Wait for Longhorn StorageClass to be created by CSI driver
+      command: kubectl get storageclass longhorn
+      register: sc_check
+      retries: 40
+      delay: 5
+      until: sc_check.rc == 0
+      changed_when: false
+
     - name: Remove default annotation from local-path StorageClass
       command: kubectl patch storageclass local-path -p '{"metadata":{"annotations":{"storageclass.kubernetes.io/is-default-class":"false"}}}'
       changed_when: true
@@ -50,6 +86,26 @@
 
     - name: Set Longhorn as default StorageClass
       command: kubectl patch storageclass longhorn -p '{"metadata":{"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+      changed_when: true
+
+    - name: Optimize Longhorn replicas for single-node / resource saving (1 replica each)
+      shell: |
+        kubectl scale deployment longhorn-ui -n longhorn-system --replicas=1
+        kubectl scale deployment csi-attacher -n longhorn-system --replicas=1
+        kubectl scale deployment csi-provisioner -n longhorn-system --replicas=1
+        kubectl scale deployment csi-resizer -n longhorn-system --replicas=1
+        kubectl scale deployment csi-snapshotter -n longhorn-system --replicas=1
+        kubectl patch deployment longhorn-driver-deployer -n longhorn-system --type='json' -p='[
+          {"op": "replace", "path": "/spec/template/spec/containers/0/command", "value": [
+            "longhorn-manager", "-d", "deploy-driver",
+            "--manager-image", "longhornio/longhorn-manager:{{ longhorn_version }}",
+            "--manager-url", "http://longhorn-backend:9500/v1",
+            "--csi-attacher-replica-count", "1",
+            "--csi-provisioner-replica-count", "1",
+            "--csi-resizer-replica-count", "1",
+            "--csi-snapshotter-replica-count", "1"
+          ]}
+        ]'
       changed_when: true
 
     - name: Get StorageClasses

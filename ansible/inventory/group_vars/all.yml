@@ -5,9 +5,8 @@ metallb_version: v0.14.8
 longhorn_version: v1.7.1
 argocd_version: v2.12.0
 
-# Cluster Token - CHANGE THIS or use Ansible Vault!
-# Generate: openssl rand -base64 32
-k3s_token: "{{ lookup('env', 'K3S_TOKEN') | default('CHANGE-ME-' + lookup('password', '/dev/null chars=ascii_letters,digits length=32'), true) }}"
+# Cluster Token - CHANGE THIS or use environment variable K3S_TOKEN!
+k3s_token: "{{ lookup('env', 'K3S_TOKEN') | default('K3sSecretClusterToken2026SecureKey', true) }}"
 
 # Network Configuration
 cluster_cidr: 10.42.0.0/16

@@ -1,0 +1,60 @@
+---
+- name: Deploy Oracle Database on K3s with Longhorn Storage
+  hosts: k3s_control[0]
+  become: yes
+  vars_files:
+    - ../vars/main.yml
+
+  tasks:
+    - name: Ensure temporary manifests directory exists
+      file:
+        path: /tmp/oracle
+        state: directory
+        mode: '0755'
+
+    - name: Render Oracle manifest template
+      template:
+        src: ../templates/oracle.yaml.j2
+        dest: /tmp/oracle/oracle.yaml
+        mode: '0644'
+
+    - name: Apply Oracle manifests to K3s
+      command: kubectl apply -f /tmp/oracle/oracle.yaml
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      register: apply_oracle
+      changed_when: "'created' in apply_oracle.stdout or 'configured' in apply_oracle.stdout"
+
+    - name: Wait for Oracle Database deployment to be available
+      command: >
+        kubectl wait --namespace {{ oracle_namespace }}
+        --for=condition=Available deployment/oracle-db
+        --timeout=600s
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      register: oracle_ready
+      retries: 30
+      delay: 15
+      until: oracle_ready.rc == 0
+      changed_when: false
+
+    - name: Clean up temporary files
+      file:
+        path: /tmp/oracle
+        state: absent
+
+    - name: Display Oracle Database connection info
+      debug:
+        msg: |
+          ==========================================================
+          🎉 Oracle Database deployed successfully!
+          ==========================================================
+          Namespace: {{ oracle_namespace }}
+          Host: {{ ansible_host }}
+          Port: {{ oracle_nodeport }}
+          Database SID: FREEPDB1 / FREE (hoặc ORCLPDB1 / ORCLCDB)
+          SYS User: sys (as sysdba) | Password: {{ oracle_sys_password }}
+          SYSTEM User: system | Password: {{ oracle_sys_password }}
+          App User: {{ oracle_app_user }} | Password: {{ oracle_app_password }}
+          Storage: {{ oracle_pvc_size }} (Longhorn Distributed Storage)
+          ==========================================================

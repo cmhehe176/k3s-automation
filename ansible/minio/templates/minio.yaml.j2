@@ -1,0 +1,143 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ minio_namespace }}
+  labels:
+    app.kubernetes.io/name: minio
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: minio-secret
+  namespace: {{ minio_namespace }}
+type: Opaque
+stringData:
+  MINIO_ROOT_USER: "{{ minio_root_user }}"
+  MINIO_ROOT_PASSWORD: "{{ minio_root_password }}"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: minio-info
+  namespace: {{ minio_namespace }}
+  labels:
+    app: minio
+data:
+  HOST: "{{ ansible_host }}"
+  S3_API_PORT: "{{ minio_api_nodeport }}"
+  CONSOLE_PORT: "{{ minio_console_nodeport }}"
+  ROOT_USER: "{{ minio_root_user }}"
+  ROOT_PASSWORD: "{{ minio_root_password }}"
+  DEFAULT_BUCKETS: "{{ minio_default_buckets | join(', ') }}"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: minio-pvc
+  namespace: {{ minio_namespace }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: {{ minio_storage_class }}
+  resources:
+    requests:
+      storage: {{ minio_pvc_size }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: minio
+  namespace: {{ minio_namespace }}
+  labels:
+    app: minio
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: minio
+  template:
+    metadata:
+      labels:
+        app: minio
+    spec:
+      initContainers:
+      - name: fix-permissions
+        image: busybox:latest
+        command: ["sh", "-c", "chmod -R 777 /data"]
+        volumeMounts:
+        - name: storage
+          mountPath: /data
+        securityContext:
+          runAsUser: 0
+      containers:
+      - name: minio
+        image: {{ minio_image }}
+        imagePullPolicy: IfNotPresent
+        command:
+        - "/bin/sh"
+        - "-c"
+        - "minio server /data --console-address :9001"
+        ports:
+        - name: s3-api
+          containerPort: 9000
+        env:
+        - name: MINIO_ROOT_USER
+          valueFrom:
+            configMapKeyRef:
+              name: minio-info
+              key: ROOT_USER
+        - name: MINIO_ROOT_PASSWORD
+          valueFrom:
+            configMapKeyRef:
+              name: minio-info
+              key: ROOT_PASSWORD
+        volumeMounts:
+        - name: storage
+          mountPath: /data
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+        readinessProbe:
+          httpGet:
+            path: /minio/health/ready
+            port: 9000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /minio/health/live
+            port: 9000
+          initialDelaySeconds: 15
+          periodSeconds: 15
+      volumes:
+      - name: storage
+        persistentVolumeClaim:
+          claimName: minio-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio-service
+  namespace: {{ minio_namespace }}
+  labels:
+    app: minio
+spec:
+  type: NodePort
+  selector:
+    app: minio
+  ports:
+  - name: s3-api
+    port: 9000
+    targetPort: 9000
+    nodePort: {{ minio_api_nodeport }}
+  - name: console
+    port: 9001
+    targetPort: 9001
+    nodePort: {{ minio_console_nodeport }}

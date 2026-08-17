@@ -1,0 +1,12 @@
+# Managed by Ansible - DO NOT EDIT MANUALLY
+server: "{{ k3s_server_url }}"
+token: "{{ k3s_node_token }}"
+node-name: "{{ inventory_hostname }}"
+node-ip: "{{ ansible_host }}"
+
+{% if k3s_node_label is defined and k3s_node_label | length > 0 %}
+node-label:
+{% for label in k3s_node_label %}
+  - "{{ label }}"
+{% endfor %}
+{% endif %}

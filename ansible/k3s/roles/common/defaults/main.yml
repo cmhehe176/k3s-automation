@@ -1,0 +1,37 @@
+---
+system_timezone: "Asia/Ho_Chi_Minh"
+
+common_packages_debian:
+  - curl
+  - wget
+  - vim
+  - git
+  - net-tools
+  - htop
+  - tar
+  - iptables
+  - nfs-common
+  - open-iscsi
+  - python3-kubernetes
+
+common_packages_redhat:
+  - curl
+  - wget
+  - vim
+  - git
+  - net-tools
+  - htop
+  - tar
+  - iptables
+  - nfs-utils
+  - iscsi-initiator-utils
+  - python3-kubernetes
+
+k3s_firewall_ports:
+  - { port: '6443/tcp', rule: 'k3s-api' }
+  - { port: '10250/tcp', rule: 'kubelet' }
+  - { port: '8472/udp', rule: 'flannel-vxlan' }
+  - { port: '51820/udp', rule: 'flannel-wireguard' }
+  - { port: '51821/udp', rule: 'flannel-wireguard-ipv6' }
+  - { port: '2379-2380/tcp', rule: 'etcd-ha' }
+  - { port: '30000-32767/tcp', rule: 'nodeport-range' }

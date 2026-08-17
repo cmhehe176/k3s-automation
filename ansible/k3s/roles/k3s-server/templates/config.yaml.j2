@@ -1,0 +1,21 @@
+# Managed by Ansible - DO NOT EDIT MANUALLY
+token: "{{ k3s_token }}"
+cluster-cidr: "{{ k3s_cluster_cidr }}"
+service-cidr: "{{ k3s_service_cidr }}"
+cluster-dns: "{{ k3s_cluster_dns }}"
+write-kubeconfig-mode: "{{ k3s_write_kubeconfig_mode }}"
+node-name: "{{ inventory_hostname }}"
+
+{% if k3s_disable_components is defined and k3s_disable_components | length > 0 %}
+disable:
+{% for item in k3s_disable_components %}
+  - {{ item }}
+{% endfor %}
+{% endif %}
+
+{% if k3s_tls_san is defined and k3s_tls_san | length > 0 %}
+tls-san:
+{% for san in k3s_tls_san | unique %}
+  - "{{ san }}"
+{% endfor %}
+{% endif %}

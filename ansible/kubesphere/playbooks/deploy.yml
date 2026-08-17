@@ -1,0 +1,79 @@
+---
+- name: Deploy KubeSphere on K3s
+  hosts: k3s_control[0]
+  become: yes
+  vars:
+    ks_core_oci_chart: "oci://hub.kubesphere.com.cn/kse/ks-core"
+    kubeconfig_path: "/etc/rancher/k3s/k3s.yaml"
+
+  tasks:
+    - name: Check if Helm is installed
+      command: which helm
+      register: helm_check
+      failed_when: false
+      changed_when: false
+
+    - name: Install Helm if missing
+      shell: |
+        curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+      when: helm_check.rc != 0
+
+    - name: Create kubesphere-system namespace
+      command: kubectl create namespace kubesphere-system
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      register: create_ns
+      failed_when: false
+      changed_when: create_ns.rc == 0
+
+    - name: Deploy KubeSphere Core (ks-core) via OCI Registry
+      command: >
+        helm upgrade --install ks-core {{ ks_core_oci_chart }}
+        -n kubesphere-system
+        --create-namespace
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      register: helm_install
+      changed_when: "'UPGRADED' in helm_install.stdout or 'INSTALLED' in helm_install.stdout or 'Pulled' in helm_install.stdout"
+
+    - name: Wait for KubeSphere apiserver deployment to be available
+      command: >
+        kubectl get deployment ks-apiserver -n kubesphere-system -o jsonpath='{.status.conditions[?(@.type=="Available")].status}'
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      register: apiserver_status
+      until: apiserver_status.stdout == "True"
+      retries: 40
+      delay: 10
+      changed_when: false
+
+    - name: Wait for KubeSphere console deployment to be available
+      command: >
+        kubectl get deployment ks-console -n kubesphere-system -o jsonpath='{.status.conditions[?(@.type=="Available")].status}'
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      register: console_status
+      until: console_status.stdout == "True"
+      retries: 40
+      delay: 10
+      changed_when: false
+
+    - name: Get KubeSphere console NodePort
+      command: >
+        kubectl get svc ks-console -n kubesphere-system -o jsonpath='{.spec.ports[0].nodePort}'
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      register: console_port
+      changed_when: false
+
+    - name: Display KubeSphere access information
+      debug:
+        msg:
+          - "=========================================================="
+          - "🎉 KubeSphere deployed successfully!"
+          - "Console URL: http://{{ ansible_host }}:{{ console_port.stdout | default('30880') }}"
+          - "Default credentials:"
+          - "  Username: admin"
+          - "  Password: P@88w0rd"
+          - "Please change the default password after first login."
+          - "=========================================================="

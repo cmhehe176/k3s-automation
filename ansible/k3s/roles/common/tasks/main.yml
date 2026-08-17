@@ -1,39 +1,38 @@
 ---
-- name: Update apt cache
+- name: Update apt cache (Debian family)
   apt:
     update_cache: yes
     cache_valid_time: 3600
-  when: ansible_os_family == "Debian"
+  when: ansible_facts['os_family'] == "Debian"
 
-- name: Install base packages
+- name: Install base packages (Debian family)
   apt:
-    name:
-      - curl
-      - wget
-      - vim
-      - git
-      - net-tools
-      - htop
-      - nfs-common
-      - open-iscsi
+    name: "{{ common_packages_debian }}"
     state: present
-  when: ansible_os_family == "Debian"
+  when: ansible_facts['os_family'] == "Debian"
 
-- name: Set timezone
+- name: Install base packages (RedHat/Fedora family)
+  dnf:
+    name: "{{ common_packages_redhat }}"
+    state: present
+  when: ansible_facts['os_family'] == "RedHat"
+
+- name: Set system timezone
   timezone:
     name: "{{ system_timezone }}"
+  when: system_timezone is defined
 
 - name: Disable swap immediately
   command: swapoff -a
   changed_when: false
 
-- name: Remove swap from fstab
-  lineinfile:
+- name: Disable swap permanently in /etc/fstab
+  replace:
     path: /etc/fstab
-    regexp: '.*swap.*'
-    state: absent
+    regexp: '^([^#].*\s+swap\s+.*)$'
+    replace: '# \1'
 
-- name: Load kernel modules
+- name: Load required kernel modules
   modprobe:
     name: "{{ item }}"
     state: present
@@ -41,7 +40,7 @@
     - overlay
     - br_netfilter
 
-- name: Make kernel modules persistent
+- name: Persist kernel modules on boot
   copy:
     dest: /etc/modules-load.d/k3s.conf
     content: |
@@ -49,7 +48,7 @@
       br_netfilter
     mode: '0644'
 
-- name: Configure sysctl for Kubernetes
+- name: Configure sysctl settings for Kubernetes
   sysctl:
     name: "{{ item.name }}"
     value: "{{ item.value }}"
@@ -66,3 +65,37 @@
     name: iscsid
     state: started
     enabled: yes
+  ignore_errors: yes
+
+- name: Check if firewalld is active
+  command: systemctl is-active firewalld
+  register: firewalld_status
+  failed_when: false
+  changed_when: false
+
+- name: Allow K3s ports in firewalld
+  firewalld:
+    port: "{{ item.port }}"
+    permanent: yes
+    state: enabled
+    immediate: yes
+  loop: "{{ k3s_firewall_ports }}"
+  when: firewalld_status.rc == 0
+  ignore_errors: yes
+
+- name: Check if ufw is active
+  command: ufw status
+  register: ufw_status
+  failed_when: false
+  changed_when: false
+
+- name: Allow K3s ports in ufw
+  ufw:
+    rule: allow
+    port: "{{ item.port.split('/')[0] }}"
+    proto: "{{ item.port.split('/')[1] }}"
+  loop: "{{ k3s_firewall_ports }}"
+  when:
+    - ufw_status.stdout is defined
+    - "'Status: active' in ufw_status.stdout"
+  ignore_errors: yes

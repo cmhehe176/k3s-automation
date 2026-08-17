@@ -1,0 +1,65 @@
+---
+- name: Deploy MinIO S3 Object Storage on K3s with Longhorn Storage
+  hosts: k3s_control[0]
+  become: yes
+  vars_files:
+    - ../vars/main.yml
+
+  tasks:
+    - name: Ensure temporary manifests directory exists
+      file:
+        path: /tmp/minio
+        state: directory
+        mode: '0755'
+
+    - name: Render MinIO manifest template
+      template:
+        src: ../templates/minio.yaml.j2
+        dest: /tmp/minio/minio.yaml
+        mode: '0644'
+
+    - name: Apply MinIO manifests to K3s
+      command: kubectl apply -f /tmp/minio/minio.yaml
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      register: apply_minio
+      changed_when: "'created' in apply_minio.stdout or 'configured' in apply_minio.stdout"
+
+    - name: Wait for MinIO deployment to be available
+      command: >
+        kubectl wait --namespace {{ minio_namespace }}
+        --for=condition=Available deployment/minio
+        --timeout=300s
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      register: minio_ready
+      retries: 20
+      delay: 5
+      until: minio_ready.rc == 0
+      changed_when: false
+
+    - name: Ensure default buckets exist in MinIO
+      shell: |
+        kubectl --kubeconfig {{ kubeconfig_path }} exec -n {{ minio_namespace }} deployment/minio -- \
+          mkdir -p {% for b in minio_default_buckets %} /data/{{ b }} {% endfor %} || true
+      changed_when: true
+
+    - name: Clean up temporary files
+      file:
+        path: /tmp/minio
+        state: absent
+
+    - name: Display MinIO connection info
+      debug:
+        msg: |
+          ==========================================================
+          🎉 MinIO S3 Object Storage deployed successfully!
+          ==========================================================
+          Namespace: {{ minio_namespace }}
+          S3 API Endpoint: http://{{ ansible_host }}:{{ minio_api_nodeport }}
+          MinIO Web Console: http://{{ ansible_host }}:{{ minio_console_nodeport }}
+          Root User: {{ minio_root_user }}
+          Root Password: {{ minio_root_password }}
+          Default Buckets Created: {{ minio_default_buckets | join(', ') }}
+          Storage: {{ minio_pvc_size }} (Longhorn Distributed Storage)
+          ==========================================================
