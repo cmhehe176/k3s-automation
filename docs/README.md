@@ -1,56 +1,59 @@
 # 📚 K3s Automation Documentation Hub
 
-Welcome to the centralized documentation index for the K3s Automation project.
+> **Duy nhất một nơi lưu trữ toàn bộ tài liệu & ghi chú của dự án K3s Automation.**
 
 ---
 
-## 🚀 Guides
+## 🚀 1. Guides & Hướng Dẫn Vận Hành
 
-Step-by-step installation, operations, and troubleshooting walkthroughs:
-
-- 📖 **[Complete Documentation Guide](guides/complete-guide.md)** — **Start here!** Full architectural breakdown, installation walkthrough, resource sizing, namespace topology, and common troubleshooting tips.
-- 💻 **[CLI & TUI Management Guide](../ansible/scripts/README.md)** — Complete command reference for `./cluster.sh` (bootstrap, add-node, teardown, middleware, console).
+- 📖 **[Complete Documentation Guide](guides/complete-guide.md)** — **Tài liệu toàn tập (Bắt đầu từ đây)**: Kiến trúc tổng quan, hướng dẫn triển khai từ A-Z, cấu hình tài nguyên, phân chia namespace, và xử lý sự cố.
 
 ---
 
-## 🏗️ Architecture & Operations
+## 📦 2. Application & Middleware Guides (`docs/apps/`)
 
-In-depth technical decisions, prerequisites, and operational runbooks:
+Hướng dẫn chi tiết từng dịch vụ ứng dụng và middleware trong cluster:
 
-- ⚙️ **[System Requirements & Sizing](operations/requirements.md)** — Minimum hardware requirements, OS compatibility (Fedora/Ubuntu), CPU/RAM resource planning, and disk partitioning.
-- 🔒 **[Security Hardening & Best Practices](operations/security.md)** — SSH key authentication, Ansible Vault encryption, sudo privilege separation, and Kubernetes RBAC.
-- 💡 **[Architecture Brainstorming & Tradeoffs](operations/brainstorm.md)** — Evaluation notes comparing vanilla K8s, K3s, OKD, OpenShift Console Standalone, and KubeSphere Core.
-
----
-
-## 📖 System Reference
-
-Configuration details, inventory variables, and distribution-specific setup:
-
-- 📝 **[Inventory & Group Variables](reference/inventory.md)** — Configuration reference for `hosts.ini`, `all.yml`, `k3s_control.yml`, and `k3s_workers.yml`.
-- 🎩 **[Fedora / RHEL Specifics](reference/fedora-notes.md)** — NetworkManager, firewalld, SELinux, and cgroup v2 tuning on Fedora Core / Server.
+- 🖥️ **[OpenShift Console & Dex OIDC](apps/openshift-console.md)** — Giao diện Web Console OpenShift, tích hợp xác thực Dex OIDC Web Form, phân quyền Multi-User RBAC.
+- 🗄️ **[Oracle Database XE](apps/oracle.md)** — Triển khai Oracle Database 19c/23ai với Persistent Storage trên Longhorn, port `31521`.
+- ⚡ **[Redis Cluster](apps/redis.md)** — Cụm Redis Cluster phân bổ 16,384 Hash Slots qua 6 pods, port `31379`.
+- 🐼 **[Redpanda Kafka & Console](apps/redpanda.md)** — Cụm Streaming Kafka tốc độ cao bằng C++ kèm giao diện Redpanda Web Console, port `31092` & `31080`.
+- 🪣 **[MinIO S3 Object Storage](apps/minio.md)** — Hệ thống lưu trữ S3 Object Storage hiệu năng cao kèm Web Console, port `31900` & `31901`.
+- 🐙 **[ArgoCD GitOps](apps/argocd.md)** — Nền tảng GitOps Continuous Delivery tích hợp MetalLB LoadBalancer.
+- 💻 **[CLI & Interactive TUI Manager](apps/cli-cluster-sh.md)** — Hướng dẫn toàn diện sử dụng script điều khiển `./cluster.sh`.
+- 🛠️ **[K3s Management Scripts](apps/k3s-scripts.md)** — Các script vận hành K3s core (`bootstrap.sh`, `add-node.sh`, `remove-node.sh`, `teardown.sh`).
 
 ---
 
-## 🔍 Code Reviews & Security Audits
+## 🏗️ 3. Operations & Kiến Trúc (`docs/operations/`)
 
-Historical and architectural audit reports:
-
-- 📋 **[Code Quality Review](reviews/code-review.md)** — Comprehensive review of Ansible playbooks, role boundaries, and idempotency tests.
-- 🛡️ **[Deep Security & Resilience Audit](reviews/deep-review.md)** — In-depth analysis of cluster recovery, firewall safety, token persistence, and failure recovery.
+- ⚙️ **[System Requirements & Sizing](operations/requirements.md)** — Yêu cầu phần cứng tối thiểu, hỗ trợ đa hệ điều hành (Ubuntu, Debian, Fedora, RedHat, Rocky, Alma), tính toán RAM/CPU.
+- 🔒 **[Security Hardening & Best Practices](operations/security.md)** — Bảo mật SSH key, Ansible Vault encryption, phân quyền sudo, và Kubernetes RBAC.
+- 💡 **[Architecture Brainstorming & Tradeoffs](operations/brainstorm.md)** — Ghi chú so sánh kiến trúc giữa Vanilla K8s, K3s, OKD, OpenShift Console Standalone, và KubeSphere Core.
 
 ---
 
-## 📦 Application Sub-Modules
+## 📖 4. Reference & Cấu Hình (`docs/reference/`)
 
-Each middleware and platform service includes its own dedicated documentation:
+- 📝 **[Inventory & Variables Reference](reference/inventory.md)** — Tham chiếu chi tiết file `hosts.ini`, `all.yml`, `k3s_control.yml`, và `k3s_workers.yml`.
+- 🎩 **[Fedora / RHEL Specifics](reference/fedora-notes.md)** — Lưu ý và tinh chỉnh riêng cho Fedora Core / Server (SELinux, firewalld, cgroup v2).
 
-- 🖥️ **[OpenShift Console & Dex OIDC](../ansible/openshift-console/README.md)** — Web console deployment, OAuth2/OIDC proxying, and multi-user login.
-- 🗄️ **[Oracle Database](../ansible/oracle/README.md)** — Enterprise Oracle 19c/23ai single-instance deployment with Longhorn storage.
-- ⚡ **[Redis Cluster](../ansible/redis/README.md)** — Highly available Redis Cluster with 16,384 hash slots across 6 pods.
-- 🐼 **[Redpanda Kafka](../ansible/redpanda/README.md)** — Fast C++ Kafka-compatible streaming cluster and Redpanda Web Console.
-- 🪣 **[MinIO S3 Storage](../ansible/minio/README.md)** — S3-compatible object storage server and web management UI.
-- 🐙 **[ArgoCD](../ansible/argocd/scripts/README.md)** — GitOps continuous delivery platform.
+---
+
+## 🔍 5. Audits & Code Reviews (`docs/reviews/`)
+
+- 📋 **[Code Quality Review](reviews/code-review.md)** — Đánh giá chi tiết chất lượng code, cấu trúc Ansible Playbooks/Roles, và tính Idempotency.
+- 🛡️ **[Deep Security & Resilience Audit](reviews/deep-review.md)** — Đánh giá chuyên sâu về an toàn tường lửa, bảo vệ kết nối SSH khi Teardown, và khả năng phục hồi dữ liệu.
+
+---
+
+## 📐 6. Specs & Plans (`docs/specs/` & `docs/plans/`)
+
+- 📑 **[OpenShift Console & Dex OIDC Spec](specs/2026-08-17-openshift-console-dex-oidc-design.md)** — Bản đặc tả thiết kế kiến trúc OpenShift Console Standalone.
+- 📋 **[K3s Middleware Stack Plan](plans/2026-08-17-k3s-middleware-stack.md)** — Kế hoạch triển khai cụm Middleware (Oracle, Redis, Redpanda, MinIO).
+- 📋 **[KubeSphere Core Plan](plans/kubesphere-simple.md)** — Kế hoạch triển khai KubeSphere Core v4.
+- 📋 **[OKD Exploration Plan](plans/okd-deployment.md)** — Khảo sát và so sánh OKD vs K3s.
+- 📋 **[Ansible Refactoring Plan](plans/refactor-ansible-structure.md)** — Kế hoạch tái cấu trúc Ansible theo ứng dụng.
 
 ---
 

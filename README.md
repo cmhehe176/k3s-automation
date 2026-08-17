@@ -1,6 +1,6 @@
 # 🚀 K3s Cluster Automation
 
-Automated, production-ready K3s Kubernetes cluster deployment and complete middleware stack on bare-metal / VPS servers using Ansible.
+Automated, production-ready K3s Kubernetes cluster deployment and complete enterprise middleware stack on bare-metal / VPS servers using Ansible.
 
 ---
 
@@ -21,18 +21,19 @@ nano inventory/group_vars/all.yml # Set MetalLB IP range / tokens
 ./cluster.sh
 ```
 
-**→ [Complete Documentation Guide](docs/guides/complete-guide.md)** — Start here for full details!
+**→ [Complete Documentation Guide](docs/guides/complete-guide.md)** — Bắt đầu từ đây để xem tài liệu toàn tập!
 
 ---
 
 ## ✨ Key Features
 
 - ✅ **Dual-Purpose Control Plane** — Master node runs control plane and workloads seamlessly (no taints).
-- ✅ **Multi-Mirror Fallback Architecture** — Zero-failure manifest downloads with local fallback bundles.
-- ✅ **Complete Enterprise Middleware** — Oracle Database, Redis Cluster, Redpanda Kafka, MinIO S3.
-- ✅ **Red Hat OpenShift Console** — Standalone web dashboard with Dex OIDC & multi-user RBAC.
-- ✅ **Unified CLI & Interactive TUI** — Single `./cluster.sh` script to manage the entire lifecycle.
-- ✅ **Idempotent & Safe Teardown** — Non-destructive cleanup that preserves system firewall & SSH connectivity.
+- ✅ **Multi-Distro OS Support** — Tự động hỗ trợ Ubuntu, Debian, Fedora, RedHat, Rocky Linux, AlmaLinux.
+- ✅ **Multi-Mirror Fallback Architecture** — Zero-failure manifest downloads với local fallback bundles đóng gói sẵn.
+- ✅ **Complete Enterprise Middleware** — Oracle Database 19c/23ai, Redis Cluster, Redpanda Kafka, MinIO S3.
+- ✅ **Red Hat OpenShift Console** — Standalone web dashboard với Dex OIDC & multi-user RBAC.
+- ✅ **Unified CLI & Interactive TUI** — Script `./cluster.sh` điều khiển toàn bộ vòng đời cluster.
+- ✅ **Idempotent & Safe Teardown** — Dọn dẹp sạch sẽ, bảo toàn 100% luật SSH và tường lửa hệ thống.
 
 ---
 
@@ -54,43 +55,17 @@ Every system component and workload runs in a dedicated namespace with persisten
 
 ---
 
-## 📁 Repository Structure
+## 📚 Central Documentation Hub (`docs/`)
 
-```
-k3s-automation/
-├── cluster.sh                 # Root executable CLI wrapper
-├── README.md                  # This landing page
-├── docs/                      # Centralized documentation hub
-│   ├── README.md              # Documentation navigation index
-│   ├── guides/                # Step-by-step guides (complete-guide.md, etc.)
-│   ├── operations/            # Requirements, security, brainstorm
-│   ├── reference/             # Inventory reference, Fedora/RHEL notes
-│   └── reviews/               # Code reviews & security audits
-└── ansible/                   # Automation engine
-    ├── cluster.sh             # Master CLI & TUI engine
-    ├── inventory/             # Node hosts & group variables
-    ├── k3s/                   # Core K3s, MetalLB, Longhorn, Teardown
-    ├── openshift-console/     # OpenShift Console & Dex OIDC
-    ├── oracle/                # Oracle Database 19c/23ai
-    ├── redis/                 # Redis Cluster (6 nodes)
-    ├── redpanda/              # Redpanda Kafka & Console
-    ├── minio/                 # MinIO S3 & Web Console
-    ├── argocd/                # ArgoCD GitOps
-    └── kubesphere/            # KubeSphere Core v4
-```
+Toàn bộ tài liệu, hướng dẫn và ghi chú kỹ thuật được lưu trữ duy nhất tại thư mục **[`docs/`](docs/README.md)**:
 
----
-
-## 📚 Documentation Index
-
-For in-depth guides and references, check the `docs/` directory:
-
-- 📖 **[Complete Guide](docs/guides/complete-guide.md)** — Full cluster guide & troubleshooting
-- 🛠️ **[CLI Reference](ansible/scripts/README.md)** — All `cluster.sh` subcommands
-- 🖥️ **[OpenShift Console & Dex Guide](ansible/openshift-console/README.md)** — Web console & OIDC setup
-- 🔒 **[Security Hardening](docs/operations/security.md)** — SSH, Vault, and RBAC best practices
-- ⚙️ **[System Requirements](docs/operations/requirements.md)** — Hardware sizing & OS prerequisites
-- 🔍 **[Code Review & Audit Reports](docs/reviews/code-review.md)** — Audit analysis & improvements
+- 📖 **[Complete Guide](docs/guides/complete-guide.md)** — Tài liệu hướng dẫn toàn diện từ A-Z
+- 📦 **[Application Docs](docs/README.md#2-application--middleware-guides-docsapps)** — Hướng dẫn chi tiết từng app ([OpenShift Console](docs/apps/openshift-console.md), [Oracle](docs/apps/oracle.md), [Redis](docs/apps/redis.md), [Redpanda](docs/apps/redpanda.md), [MinIO](docs/apps/minio.md), [ArgoCD](docs/apps/argocd.md), [CLI Manager](docs/apps/cli-cluster-sh.md))
+- 🔒 **[Security Hardening](docs/operations/security.md)** — Bảo mật SSH, Ansible Vault, sudo và RBAC
+- ⚙️ **[System Requirements](docs/operations/requirements.md)** — Yêu cầu phần cứng, hệ điều hành và định cỡ tài nguyên
+- 📝 **[Inventory & Variables](docs/reference/inventory.md)** — Cấu hình biến Ansible
+- 🔍 **[Code Review & Audits](docs/reviews/code-review.md)** — Báo cáo chất lượng code và audit bảo mật
+- 📐 **[Design Specs & Plans](docs/README.md#6-specs--plans-docsspecs--docsplans)** — Các bản thiết kế và kế hoạch chi tiết
 
 ---
 
