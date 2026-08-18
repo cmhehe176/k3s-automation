@@ -8,7 +8,7 @@
 
   vars:
     console_namespace: "openshift-console"
-    console_image: "quay.io/openshift/origin-console:latest"
+    console_image: "quay.io/openshift/origin-console:4.19"
     console_service_type: "LoadBalancer"
     node_ip: "{{ ansible_default_ipv4.address | default(ansible_host) }}"
     kubeconfig_path: "/etc/rancher/k3s/k3s.yaml"
@@ -17,7 +17,7 @@
     - name: Ensure control node hostname/domain resolves locally in /etc/hosts
       lineinfile:
         path: /etc/hosts
-        line: "127.0.0.1 {{ ansible_host }}"
+        line: "{{ loopback_ip | default('127.0.0.1') }} {{ ansible_host }}"
         state: present
 
     - name: Ensure temporary destination directory exists
@@ -63,7 +63,7 @@
         DNS.2 = dex
         DNS.3 = dex.{{ console_namespace }}.svc.cluster.local
         IP.1 = {{ node_ip }}
-        IP.2 = 127.0.0.1
+        IP.2 = {{ loopback_ip | default('127.0.0.1') }}
         EOF
 
           openssl genrsa -out ca.key 2048
@@ -173,6 +173,37 @@
         timeout: 120
       when: (k3s_oidc_config.changed | default(false)) or (dex_ca_copy.changed | default(false)) or (apply_dex.changed | default(false))
 
+    - name: Clean up legacy openshift-monitoring namespace if present
+      command: kubectl delete namespace openshift-monitoring --ignore-not-found=true --timeout=60s
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      failed_when: false
+      changed_when: false
+
+    - name: Clean temporary OpenShift CRDs directory
+      file:
+        path: /tmp/openshift-console/crds
+        state: absent
+
+    - name: Ensure OpenShift CRDs directory exists
+      file:
+        path: /tmp/openshift-console/crds
+        state: directory
+        mode: '0755'
+
+    - name: Copy OpenShift API CRD manifests
+      copy:
+        src: ../manifests/crds/
+        dest: /tmp/openshift-console/crds/
+        mode: '0644'
+
+    - name: Apply OpenShift API CRDs to enable full Console navigation tabs
+      command: kubectl apply -f /tmp/openshift-console/crds/
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      register: apply_crds
+      changed_when: "'created' in apply_crds.stdout"
+
     - name: Render OpenShift Monitoring manifest template
       template:
         src: ../templates/monitoring.yaml.j2
@@ -185,6 +216,12 @@
         KUBECONFIG: "{{ kubeconfig_path }}"
       register: apply_monitoring
       changed_when: "'created' in apply_monitoring.stdout or 'configured' in apply_monitoring.stdout"
+
+    - name: Restart Prometheus deployment to reload rules and scrape config
+      command: kubectl rollout restart deployment/prometheus -n {{ console_namespace }}
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      changed_when: true
 
     - name: Render OpenShift Console manifest template
       template:

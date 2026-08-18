@@ -6,7 +6,7 @@ echo "OpenShift Console Standalone Uninstallation"
 echo "============================================"
 echo ""
 
-CONTROL_NODE="${1:-node-1}"
+CONTROL_NODE="${1:-${DEFAULT_CONTROL_NODE:-node-1}}"
 
 # Check if running from ansible directory
 if [ ! -f "ansible.cfg" ]; then

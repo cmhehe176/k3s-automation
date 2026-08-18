@@ -1,16 +1,9 @@
 ---
 apiVersion: v1
-kind: Namespace
-metadata:
-  name: openshift-monitoring
-  labels:
-    app.kubernetes.io/name: openshift-monitoring
----
-apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: prometheus-k8s
-  namespace: openshift-monitoring
+  namespace: {{ console_namespace }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -52,7 +45,7 @@ metadata:
 subjects:
 - kind: ServiceAccount
   name: prometheus-k8s
-  namespace: openshift-monitoring
+  namespace: {{ console_namespace }}
 roleRef:
   kind: ClusterRole
   name: prometheus-k8s
@@ -62,7 +55,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: prometheus-config
-  namespace: openshift-monitoring
+  namespace: {{ console_namespace }}
 data:
   prometheus.yml: |
     global:
@@ -82,7 +75,7 @@ data:
           - role: endpoints
             namespaces:
               names:
-                - openshift-monitoring
+                - {{ console_namespace }}
         relabel_configs:
           - source_labels: [__meta_kubernetes_service_name]
             action: keep
@@ -97,7 +90,7 @@ data:
           - role: endpoints
             namespaces:
               names:
-                - openshift-monitoring
+                - {{ console_namespace }}
         relabel_configs:
           - source_labels: [__meta_kubernetes_service_name]
             action: keep
@@ -120,6 +113,11 @@ data:
             regex: (.+)
             target_label: __metrics_path__
             replacement: /api/v1/nodes/${1}/proxy/metrics
+          - source_labels: [__meta_kubernetes_node_name]
+            target_label: node
+          - source_labels: [__meta_kubernetes_node_address_InternalIP]
+            target_label: instance
+            replacement: ${1}:10250
 
       - job_name: 'cadvisor'
         scheme: https
@@ -138,35 +136,68 @@ data:
             regex: (.+)
             target_label: __metrics_path__
             replacement: /api/v1/nodes/${1}/proxy/metrics/cadvisor
+          - source_labels: [__meta_kubernetes_node_name]
+            target_label: node
+          - source_labels: [__meta_kubernetes_node_address_InternalIP]
+            target_label: instance
+            replacement: ${1}:10250
 
   node-rules.yaml: |
     groups:
     - name: node.rules
       rules:
-      - record: instance:node_cpu_utilisation:rate1m
+      - record: 'instance:node_cpu:rate:sum'
+        expr: sum without (cpu, mode) (rate(node_cpu_seconds_total{mode!="idle"}[2m]))
+      - record: 'node:node_cpu:rate:sum'
+        expr: sum without (cpu, mode) (rate(node_cpu_seconds_total{mode!="idle"}[2m]))
+      - record: 'instance:node_cpu_utilisation:rate1m'
         expr: 1 - avg without (cpu, mode) (rate(node_cpu_seconds_total{mode="idle"}[1m]))
-      - record: instance:node_cpu:rate1m
+      - record: 'node:node_cpu_utilisation:rate1m'
+        expr: 1 - avg without (cpu, mode) (rate(node_cpu_seconds_total{mode="idle"}[1m]))
+      - record: 'instance:node_cpu:rate1m'
         expr: rate(node_cpu_seconds_total{mode!="idle"}[1m])
-      - record: instance:node_memory_utilisation:ratio
+      - record: 'instance:node_memory_utilisation:ratio'
         expr: 1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)
-      - record: instance:node_memory_working_set:bytes
+      - record: 'node:node_memory_utilisation:ratio'
+        expr: 1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)
+      - record: 'instance:node_memory_working_set:bytes'
         expr: node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes
-      - record: instance:node_network_receive_bytes_excluding_lo:rate1m
+      - record: 'node:node_memory_working_set:bytes'
+        expr: node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes
+      - record: 'instance:node_network_receive_bytes:rate:sum'
+        expr: sum without (device) (rate(node_network_receive_bytes_total{device!="lo"}[2m]))
+      - record: 'node:node_network_receive_bytes:rate:sum'
+        expr: sum without (device) (rate(node_network_receive_bytes_total{device!="lo"}[2m]))
+      - record: 'instance:node_network_transmit_bytes:rate:sum'
+        expr: sum without (device) (rate(node_network_transmit_bytes_total{device!="lo"}[2m]))
+      - record: 'node:node_network_transmit_bytes:rate:sum'
+        expr: sum without (device) (rate(node_network_transmit_bytes_total{device!="lo"}[2m]))
+      - record: 'instance:node_network_receive_bytes_excluding_lo:rate1m'
         expr: sum without (device) (rate(node_network_receive_bytes_total{device!="lo"}[1m]))
-      - record: instance:node_network_transmit_bytes_excluding_lo:rate1m
+      - record: 'node:node_network_receive_bytes_excluding_lo:rate1m'
+        expr: sum without (device) (rate(node_network_receive_bytes_total{device!="lo"}[1m]))
+      - record: 'instance:node_network_transmit_bytes_excluding_lo:rate1m'
         expr: sum without (device) (rate(node_network_transmit_bytes_total{device!="lo"}[1m]))
-      - record: instance:node_filesystem_usage:ratio
+      - record: 'node:node_network_transmit_bytes_excluding_lo:rate1m'
+        expr: sum without (device) (rate(node_network_transmit_bytes_total{device!="lo"}[1m]))
+      - record: 'instance:node_filesystem_usage:ratio'
         expr: 1 - (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"})
-      - record: node_namespace_pod:kube_pod_info:
+      - record: 'node:node_filesystem_usage:ratio'
+        expr: 1 - (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"})
+      - record: 'instance:node_num_cpu:sum'
+        expr: count without (cpu, mode) (node_cpu_seconds_total{mode="idle"})
+      - record: 'node:node_num_cpu:sum'
+        expr: count without (cpu, mode) (node_cpu_seconds_total{mode="idle"})
+      - record: 'node_namespace_pod:kube_pod_info:'
         expr: kube_pod_info
-      - record: node_role_os:kube_node_role:
+      - record: 'node_role_os:kube_node_role:'
         expr: kube_node_role
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: prometheus
-  namespace: openshift-monitoring
+  namespace: {{ console_namespace }}
   labels:
     app: prometheus
 spec:
@@ -225,7 +256,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: prometheus
-  namespace: openshift-monitoring
+  namespace: {{ console_namespace }}
   labels:
     app: prometheus
 spec:
@@ -241,7 +272,7 @@ apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: node-exporter
-  namespace: openshift-monitoring
+  namespace: {{ console_namespace }}
   labels:
     app: node-exporter
 spec:
@@ -300,7 +331,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: node-exporter
-  namespace: openshift-monitoring
+  namespace: {{ console_namespace }}
   labels:
     app: node-exporter
 spec:
@@ -316,7 +347,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: kube-state-metrics
-  namespace: openshift-monitoring
+  namespace: {{ console_namespace }}
   labels:
     app: kube-state-metrics
 spec:
@@ -348,7 +379,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: kube-state-metrics
-  namespace: openshift-monitoring
+  namespace: {{ console_namespace }}
   labels:
     app: kube-state-metrics
 spec:

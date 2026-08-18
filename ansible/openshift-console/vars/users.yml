@@ -3,3 +3,8 @@
 console_oidc_port: 32000
 console_nodeport: 30900
 console_client_id: "openshift-console"
+
+# Dex Persistent Database Storage
+dex_storage_class: "longhorn"
+dex_storage_size: "1Gi"
+

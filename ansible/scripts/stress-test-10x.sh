@@ -4,7 +4,7 @@ set -euo pipefail
 ANSIBLE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ANSIBLE_DIR"
 
-REPORT_FILE="/home/congminh/.gemini/antigravity-cli/brain/895f131e-75d1-46b0-934b-4b25920cbc2b/stress_test_10x.log"
+REPORT_FILE="${REPORT_FILE:-$ANSIBLE_DIR/stress_test_10x.log}"
 echo "==========================================================" | tee "$REPORT_FILE"
 echo "🚀 KIỂM THỬ TUẦN TỰ 10 VÒNG (DEPLOY -> VERIFY -> TEARDOWN)" | tee -a "$REPORT_FILE"
 echo "Thời gian bắt đầu: $(date '+%Y-%m-%d %H:%M:%S')" | tee -a "$REPORT_FILE"
@@ -42,7 +42,7 @@ for i in $(seq 1 $TOTAL_ROUNDS); do
 
   # 2. XÁC THỰC CLUSTER & PODS
   echo "🔍 [VÒNG $i] Kiểm tra trạng thái Cluster..." | tee -a "$REPORT_FILE"
-  if ansible node-1 -i inventory/hosts.ini -m ping >> "$REPORT_FILE" 2>&1; then
+  if ansible ${DEFAULT_CONTROL_NODE:-node-1} -i inventory/hosts.ini -m ping >> "$REPORT_FILE" 2>&1; then
     echo "  ✅ SSH Connectivity: OK" | tee -a "$REPORT_FILE"
   else
     echo "  ❌ SSH Connectivity: FAILED!" | tee -a "$REPORT_FILE"
@@ -50,7 +50,7 @@ for i in $(seq 1 $TOTAL_ROUNDS); do
     break
   fi
 
-  local_pods=$(ansible node-1 -i inventory/hosts.ini -m command -a "kubectl get pods -A --no-headers" 2>/dev/null | grep -E 'Running|Completed' | wc -l || true)
+  local_pods=$(ansible ${DEFAULT_CONTROL_NODE:-node-1} -i inventory/hosts.ini -m command -a "kubectl get pods -A --no-headers" 2>/dev/null | grep -E 'Running|Completed' | wc -l || true)
   echo "  ✅ Tổng số Pods hoạt động tốt: $local_pods pods" | tee -a "$REPORT_FILE"
 
   # 3. TEARDOWN SẠCH SẼ (Gỡ bỏ toàn bộ để khôi phục máy trắng)
@@ -64,7 +64,7 @@ for i in $(seq 1 $TOTAL_ROUNDS); do
   fi
 
   # Kiểm tra SSH sau Teardown
-  if ansible node-1 -i inventory/hosts.ini -m ping >> "$REPORT_FILE" 2>&1; then
+  if ansible ${DEFAULT_CONTROL_NODE:-node-1} -i inventory/hosts.ini -m ping >> "$REPORT_FILE" 2>&1; then
     echo "  ✅ SSH sau Teardown: OK (Kết nối bình thường)" | tee -a "$REPORT_FILE"
   else
     echo "  ❌ SSH sau Teardown: MẤT KẾT NỐI!" | tee -a "$REPORT_FILE"

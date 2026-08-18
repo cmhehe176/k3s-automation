@@ -7,17 +7,18 @@
     kubeconfig_path: "/etc/rancher/k3s/k3s.yaml"
 
   tasks:
-    - name: Delete OpenShift Console namespace
-      command: kubectl delete namespace {{ console_namespace }} --timeout=60s
+    - name: Delete OpenShift and Monitoring namespaces
+      command: kubectl delete namespace {{ console_namespace }} openshift-monitoring --timeout=60s
       environment:
         KUBECONFIG: "{{ kubeconfig_path }}"
       register: delete_ns
       failed_when: false
       changed_when: delete_ns.rc == 0
 
-    - name: Delete OpenShift RBAC bindings
+    - name: Delete OpenShift RBAC and Monitoring cluster roles/bindings
       command: >
-        kubectl delete clusterrolebinding dex-admins-binding dex-developers-view-binding console-admin-binding
+        kubectl delete clusterrolebinding dex-admins-binding dex-developers-view-binding console-admin-binding prometheus-k8s --ignore-not-found=true &&
+        kubectl delete clusterrole prometheus-k8s --ignore-not-found=true
       environment:
         KUBECONFIG: "{{ kubeconfig_path }}"
       register: delete_crb

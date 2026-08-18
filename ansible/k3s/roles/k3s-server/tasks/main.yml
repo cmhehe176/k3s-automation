@@ -144,7 +144,7 @@
 - name: Update kubeconfig server address with target host IP
   replace:
     path: ~/.kube/config-k3s
-    regexp: 'https://127.0.0.1:6443'
-    replace: 'https://{{ ansible_host }}:6443'
+    regexp: 'https://127.0.0.1:{{ k3s_api_port | default("6443") }}'
+    replace: 'https://{{ ansible_host }}:{{ k3s_api_port | default("6443") }}'
   delegate_to: localhost
   become: no

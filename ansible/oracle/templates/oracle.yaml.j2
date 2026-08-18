@@ -27,8 +27,8 @@ metadata:
 data:
   HOST: "{{ ansible_host }}"
   PORT: "{{ oracle_nodeport }}"
-  SERVICE_NAME: "FREEPDB1"
-  SID: "FREE"
+  SERVICE_NAME: "{{ oracle_service_name | default('FREEPDB1') }}"
+  SID: "{{ oracle_sid | default('FREE') }}"
   SYS_PASSWORD: "{{ oracle_sys_password }}"
   APP_USER: "{{ oracle_app_user }}"
   APP_PASSWORD: "{{ oracle_app_password }}"
