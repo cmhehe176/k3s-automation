@@ -100,6 +100,17 @@ spec:
       - name: redpanda
         image: {{ redpanda_image }}
         imagePullPolicy: IfNotPresent
+        env:
+        - name: KAFKA_BOOTSTRAP_SERVER
+          valueFrom:
+            configMapKeyRef:
+              name: redpanda-info
+              key: KAFKA_BOOTSTRAP_SERVER
+        - name: INTERNAL_BOOTSTRAP_SERVER
+          valueFrom:
+            configMapKeyRef:
+              name: redpanda-info
+              key: INTERNAL_BOOTSTRAP_SERVER
         command:
         - "rpk"
         - "redpanda"
@@ -109,7 +120,7 @@ spec:
         - "--memory=1G"
         - "--reserve-memory=0M"
         - "--kafka-addr=PLAINTEXT://0.0.0.0:29092,OUTSIDE://0.0.0.0:9092"
-        - "--advertise-kafka-addr=PLAINTEXT://redpanda-0.redpanda-headless.{{ redpanda_namespace }}.svc.cluster.local:29092,OUTSIDE://{{ ansible_host }}:{{ redpanda_kafka_nodeport }}"
+        - "--advertise-kafka-addr=PLAINTEXT://$(INTERNAL_BOOTSTRAP_SERVER),OUTSIDE://$(KAFKA_BOOTSTRAP_SERVER)"
         - "--schema-registry-addr=0.0.0.0:8081"
         ports:
         - name: internal
