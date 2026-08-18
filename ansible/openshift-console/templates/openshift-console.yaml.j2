@@ -61,6 +61,8 @@ data:
   BRIDGE_BASE_ADDRESS: "http://{{ ansible_host }}:{{ console_nodeport }}"
   BRIDGE_K8S_MODE: "in-cluster"
   BRIDGE_LISTEN: "http://0.0.0.0:9000"
+  BRIDGE_PROMETHEUS_URL: "http://prometheus.openshift-monitoring.svc:9090"
+  BRIDGE_PROMETHEUS_TEN_URL: "http://prometheus.openshift-monitoring.svc:9090"
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -134,13 +136,14 @@ metadata:
   labels:
     app: openshift-console
 spec:
-  type: {{ console_service_type }}
+  type: {{ console_service_type | default('LoadBalancer') }}
   selector:
     app: openshift-console
   ports:
   - name: http
-    port: 9000
+    port: 80
     targetPort: 9000
-{% if console_service_type == 'NodePort' %}
-    nodePort: {{ console_nodeport }}
-{% endif %}
+    nodePort: {{ console_nodeport | default(30900) }}
+  - name: https
+    port: 443
+    targetPort: 9000

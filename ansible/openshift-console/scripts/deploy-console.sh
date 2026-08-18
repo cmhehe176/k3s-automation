@@ -27,7 +27,7 @@ echo ""
 # Deploy OpenShift Console
 echo "🚀 Deploying OpenShift Console Standalone on K3s..."
 echo ""
-ansible-playbook -i inventory/hosts.ini openshift-console/playbooks/deploy.yml --ask-become-pass "$@" || exit 1
+ansible-playbook -i inventory/hosts.ini openshift-console/playbooks/deploy.yml "$@" || exit 1
 
 echo ""
 echo "============================================"

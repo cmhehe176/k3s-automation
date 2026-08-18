@@ -27,7 +27,7 @@ echo ""
 # Uninstall OpenShift Console
 echo "🗑️  Removing OpenShift Console Standalone from K3s..."
 echo ""
-ansible-playbook -i inventory/hosts.ini openshift-console/playbooks/uninstall.yml --ask-become-pass "$@" || exit 1
+ansible-playbook -i inventory/hosts.ini openshift-console/playbooks/uninstall.yml "$@" || exit 1
 
 echo ""
 echo "============================================"

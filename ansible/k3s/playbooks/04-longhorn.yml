@@ -108,6 +108,10 @@
         ]'
       changed_when: true
 
+    - name: Configure Longhorn frontend service as LoadBalancer
+      command: kubectl patch svc longhorn-frontend -n longhorn-system -p '{"spec":{"type":"LoadBalancer"}}'
+      changed_when: false
+
     - name: Get StorageClasses
       command: kubectl get storageclass
       register: storage_classes
