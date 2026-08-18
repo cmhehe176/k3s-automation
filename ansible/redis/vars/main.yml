@@ -1,7 +1,6 @@
 ---
 redis_namespace: "redis"
 redis_image: "redis:7.2-alpine"
-redis_password: "Redis@2026"
 redis_cluster_replicas: 3
 redis_pvc_size: "10Gi"
 redis_storage_class: "longhorn"

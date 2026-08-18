@@ -1,24 +1,5 @@
 ---
-# OpenShift Console & Dex OIDC User Configuration
+# OpenShift Console & Dex OIDC Network Ports & Client Config
 console_oidc_port: 32000
 console_nodeport: 30900
 console_client_id: "openshift-console"
-console_client_secret: "{{ lookup('env', 'CONSOLE_CLIENT_SECRET') | default('OpenShiftConsoleSecretKey2026', true) }}"
-
-# Session Cookie Encryption (32-bytes) and Authentication (64-bytes) Keys
-console_cookie_encryption_key: "{{ lookup('env', 'COOKIE_ENCRYPTION_KEY') | default('k3sConsoleCookieEncryptKey32Byte', true) }}"
-console_cookie_auth_key: "{{ lookup('env', 'COOKIE_AUTH_KEY') | default('k3sConsoleCookieAuthKey64ByteLongRandomStringForSessionValidation12', true) }}"
-
-# List of users to be created in Dex OIDC
-console_users:
-  - username: "admin"
-    email: "admin@ndmc.pro"
-    password: "{{ lookup('env', 'CONSOLE_ADMIN_PASSWORD') | default('Admin@2026', true) }}"
-    groups:
-      - "admins"
-
-  - username: "developer"
-    email: "dev@ndmc.pro"
-    password: "{{ lookup('env', 'CONSOLE_DEV_PASSWORD') | default('Dev@2026', true) }}"
-    groups:
-      - "developers"

@@ -1,0 +1,47 @@
+---
+# ==============================================================================
+# 🔐 ANSIBLE VAULT / CREDENTIALS MANAGEMENT (TEMPLATE / EXAMPLE)
+# ==============================================================================
+# Hướng dẫn sử dụng:
+#   1. Copy file này thành vault.yml:
+#      cp inventory/group_vars/vault.example.yml inventory/group_vars/vault.yml
+#
+#   2. Thay đổi các mật khẩu / secrets theo ý bạn hoặc dùng biến môi trường.
+#
+#   3. (Tùy chọn) Mã hóa file vault.yml bằng Ansible Vault:
+#      ansible-vault encrypt inventory/group_vars/vault.yml
+# ==============================================================================
+
+# --- K3s Cluster Token ---
+k3s_token: "{{ lookup('env', 'K3S_TOKEN') | default('K3sSecretClusterToken2026SecureKey', true) }}"
+
+# --- Oracle Database XE Credentials ---
+oracle_sys_password: "{{ lookup('env', 'ORACLE_SYS_PASSWORD') | default('Oracle@2026', true) }}"
+oracle_app_user: "{{ lookup('env', 'ORACLE_APP_USER') | default('app_user', true) }}"
+oracle_app_password: "{{ lookup('env', 'ORACLE_APP_PASSWORD') | default('App@2026', true) }}"
+
+# --- Redis Cluster Credentials ---
+redis_password: "{{ lookup('env', 'REDIS_PASSWORD') | default('Redis@2026', true) }}"
+
+# --- MinIO S3 Object Storage Credentials ---
+minio_root_user: "{{ lookup('env', 'MINIO_ROOT_USER') | default('minioadmin', true) }}"
+minio_root_password: "{{ lookup('env', 'MINIO_ROOT_PASSWORD') | default('Minio@2026', true) }}"
+
+# --- Red Hat OpenShift Web Console & Dex OIDC Keys ---
+console_client_secret: "{{ lookup('env', 'CONSOLE_CLIENT_SECRET') | default('OpenShiftConsoleSecretKey2026', true) }}"
+console_cookie_encryption_key: "{{ lookup('env', 'COOKIE_ENCRYPTION_KEY') | default('k3sConsoleCookieEncryptKey32Byte', true) }}"
+console_cookie_auth_key: "{{ lookup('env', 'COOKIE_AUTH_KEY') | default('k3sConsoleCookieAuthKey64ByteLongRandomStringForSessionValidation12', true) }}"
+
+# --- OpenShift Console Dex OIDC Users ---
+console_users:
+  - username: "admin"
+    email: "admin@ndmc.pro"
+    password: "{{ lookup('env', 'CONSOLE_ADMIN_PASSWORD') | default('Admin@2026', true) }}"
+    groups:
+      - "admins"
+
+  - username: "developer"
+    email: "dev@ndmc.pro"
+    password: "{{ lookup('env', 'CONSOLE_DEV_PASSWORD') | default('Dev@2026', true) }}"
+    groups:
+      - "developers"

@@ -1,12 +1,13 @@
 ---
+# ==============================================================================
+# 🌐 GLOBAL CONFIGURATION & COMPONENT VERSIONS
+# ==============================================================================
+
 # Component Versions
 k3s_version: v1.30.3+k3s1
 metallb_version: v0.14.8
 longhorn_version: v1.7.1
 argocd_version: v2.12.0
-
-# Cluster Token - CHANGE THIS or use environment variable K3S_TOKEN!
-k3s_token: "{{ lookup('env', 'K3S_TOKEN') | default('K3sSecretClusterToken2026SecureKey', true) }}"
 
 # Network Configuration
 cluster_cidr: 10.42.0.0/16
@@ -18,3 +19,6 @@ system_timezone: Asia/Ho_Chi_Minh
 
 # MetalLB Configuration (adjust according to your network)
 metallb_ip_range: 192.168.1.100-192.168.1.150
+
+# Global Kubeconfig Path
+kubeconfig_path: "/etc/rancher/k3s/k3s.yaml"

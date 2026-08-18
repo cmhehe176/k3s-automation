@@ -3,7 +3,7 @@
   stat:
     path: "{{ item }}"
   loop:
-    - "{{ playbook_dir }}/../.vault/k3s-node-token"
+    - "{{ inventory_dir }}/../.vault/k3s-node-token"
     - /tmp/k3s-node-token
   delegate_to: localhost
   register: token_stat

@@ -130,8 +130,7 @@ ansible-galaxy collection install kubernetes.core
 ### 1. Configure Inventory
 
 ```bash
-cd k3s-automation/ansible
-nano inventory/hosts.ini
+nano ansible/inventory/hosts.ini
 ```
 
 ```ini
@@ -139,32 +138,36 @@ nano inventory/hosts.ini
 node-1 ansible_host=192.168.1.181 ansible_user=ndmc
 
 [k3s_workers]
-node-2 ansible_host=192.168.1.143 ansible_user=laptop
-# node-3 ansible_host=192.168.1.X ansible_user=username
+# node-2 ansible_host=192.168.1.182 ansible_user=ndmc
 ```
 
-### 2. Configure Variables
+### 2. Configure Vault & Secrets (Credentials Management)
+
+All cluster tokens, database passwords, S3 keys, and OpenShift Console admin credentials are centrally managed in `inventory/group_vars/vault.yml`:
 
 ```bash
-nano inventory/group_vars/all.yml
+# Create your local vault.yml from the provided template
+cp ansible/inventory/group_vars/vault.example.yml ansible/inventory/group_vars/vault.yml
+
+# Edit passwords or customize environment variable mappings
+nano ansible/inventory/group_vars/vault.yml
 ```
 
-```yaml
-k3s_version: v1.30.3+k3s1
-metallb_ip_range: 192.168.1.100-192.168.1.150
-```
+> [!NOTE]
+> `inventory/group_vars/vault.yml` and `vault.yaml` are automatically **IGNORED by Git**. Your secrets remain strictly local.
+> To encrypt the vault file with AES-256:
+> ```bash
+> ansible-vault encrypt ansible/inventory/group_vars/vault.yml
+> ```
 
-### 3. Setup SSH Keys
+### 3. Deploy Everything with Master CLI
 
 ```bash
-ssh-copy-id ndmc@192.168.1.181
-ssh-copy-id laptop@192.168.1.143
-```
+# Deploy entire cluster + all middleware in 1 step (Strict Ordering):
+./cluster.sh deploy-all
 
-### 4. Bootstrap Cluster
-
-```bash
-./k3s/scripts/bootstrap.sh
+# Or launch the interactive terminal UI:
+./cluster.sh
 ```
 
 **What it does:**

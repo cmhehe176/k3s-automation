@@ -6,9 +6,24 @@
 *.kubeconfig
 config-k3s
 
-# Tokens
+# Tokens & Vault Secrets
+.vault/
+**/.vault/
 *token*
+*.vault_password
+.vault-pass*
+vault.yml
+vault.yaml
+**/vault.yml
+**/vault.yaml
+**/group_vars/vault.yml
+**/group_vars/vault.yaml
 !group_vars/*
+!inventory/group_vars/*
+!vault.example.yml
+!vault.example.yaml
+!inventory/group_vars/vault.example.yml
+!inventory/group_vars/vault.example.yaml
 
 # OS
 .DS_Store

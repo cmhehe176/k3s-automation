@@ -110,7 +110,7 @@
 
 - name: Ensure .vault directory exists locally
   file:
-    path: "{{ playbook_dir }}/../.vault"
+    path: "{{ inventory_dir }}/../.vault"
     state: directory
     mode: '0700'
   delegate_to: localhost
@@ -122,14 +122,14 @@
     dest: "{{ item }}"
     mode: '0600'
   loop:
-    - "{{ playbook_dir }}/../.vault/k3s-node-token"
+    - "{{ inventory_dir }}/../.vault/k3s-node-token"
     - /tmp/k3s-node-token
   delegate_to: localhost
   become: no
   no_log: true
 
 - name: Encrypt token with ansible-vault if configured
-  command: ansible-vault encrypt "{{ playbook_dir }}/../.vault/k3s-node-token"
+  command: ansible-vault encrypt "{{ inventory_dir }}/../.vault/k3s-node-token"
   delegate_to: localhost
   become: no
   when: ansible_vault_password_file is defined or lookup('env', 'ANSIBLE_VAULT_PASSWORD_FILE') != ''
