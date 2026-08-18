@@ -28,6 +28,7 @@ fi
 
 cd "$ROOT_DIR"
 export KUBECONFIG="${HOME}/.kube/config-k3s"
+DEFAULT_CONTROL_NODE="${DEFAULT_CONTROL_NODE:-node-1}"
 
 # Banner
 print_banner() {
@@ -129,7 +130,7 @@ cmd_deploy_all() {
 
 # Command Handlers
 cmd_bootstrap() {
-    local target_node="${1:-node-1}"
+    local target_node="${1:-$DEFAULT_CONTROL_NODE}"
     print_banner
     echo -e "${YELLOW}🎯 Starting K3s Bootstrap on ${BOLD}${target_node}${NC}..."
     echo ""
@@ -413,8 +414,8 @@ interactive_menu() {
                 read -p "Press Enter to continue..."
                 ;;
             2)
-                read -p "Enter control node name [default: node-1]: " target_node
-                target_node="${target_node:-node-1}"
+                read -p "Enter control node name [default: $DEFAULT_CONTROL_NODE]: " target_node
+                target_node="${target_node:-$DEFAULT_CONTROL_NODE}"
                 cmd_bootstrap "$target_node"
                 read -p "Press Enter to continue..."
                 ;;

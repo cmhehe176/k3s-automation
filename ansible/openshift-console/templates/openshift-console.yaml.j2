@@ -66,8 +66,8 @@ data:
   BRIDGE_PROMETHEUS_PUBLIC_URL: "http://{{ ansible_host }}:{{ console_nodeport }}/api/prometheus"
   BRIDGE_THANOS_PUBLIC_URL: "http://{{ ansible_host }}:{{ console_nodeport }}/api/prometheus-tenancy"
   BRIDGE_LISTEN: "http://0.0.0.0:9000"
-  BRIDGE_PLUGINS: "networking-console-plugin=http://networking-console-plugin.{{ console_namespace }}.svc:8080,monitoring-plugin=http://monitoring-console-plugin.{{ console_namespace }}.svc:9443"
-  BRIDGE_I18N_NAMESPACES: "plugin__networking-console-plugin,plugin__monitoring-plugin"
+  BRIDGE_PLUGINS: "networking-console-plugin=http://networking-console-plugin.{{ console_namespace }}.svc:8080,monitoring-console-plugin=http://monitoring-console-plugin.{{ console_namespace }}.svc:9443"
+  BRIDGE_I18N_NAMESPACES: "plugin__networking-console-plugin,plugin__monitoring-console-plugin"
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -436,7 +436,7 @@ spec:
 apiVersion: console.openshift.io/v1
 kind: ConsolePlugin
 metadata:
-  name: monitoring-plugin
+  name: monitoring-console-plugin
 spec:
   displayName: 'Monitoring'
   backend:

@@ -69,7 +69,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: dex-developers-default-binding
-  namespace: default
+  namespace: {{ target_default_namespace | default('default') }}
 subjects:
 - kind: Group
   name: developers
