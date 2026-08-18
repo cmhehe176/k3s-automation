@@ -61,6 +61,9 @@ Toàn bộ tài liệu, hướng dẫn và ghi chú kỹ thuật được lưu t
 
 - 📖 **[Complete Guide](docs/guides/complete-guide.md)** — Tài liệu hướng dẫn toàn diện từ A-Z
 - 📦 **[Application Docs](docs/README.md#2-application--middleware-guides-docsapps)** — Hướng dẫn chi tiết từng app ([OpenShift Console](docs/apps/openshift-console.md), [Oracle](docs/apps/oracle.md), [Redis](docs/apps/redis.md), [Redpanda](docs/apps/redpanda.md), [MinIO](docs/apps/minio.md), [ArgoCD](docs/apps/argocd.md), [CLI Manager](docs/apps/cli-cluster-sh.md))
+- 💻 **[Client Machine Setup](docs/operations/client-setup.md)** — Cài đặt Ansible và công cụ trên máy client / laptop
+- 🔒 **[RBAC & Permissions Guide](docs/operations/rbac-and-permissions.md)** — Hướng dẫn phân quyền User/Group trên CLI và OpenShift Console
+- 📦 **[ConfigMaps & Secrets Reference](docs/reference/configmaps-and-secrets.md)** — Kiến trúc tham số động, danh mục ConfigMaps & Secrets
 - 🔒 **[Security Hardening](docs/operations/security.md)** — Bảo mật SSH, Ansible Vault, sudo và RBAC
 - ⚙️ **[System Requirements](docs/operations/requirements.md)** — Yêu cầu phần cứng, hệ điều hành và định cỡ tài nguyên
 - 📝 **[Inventory & Variables](docs/reference/inventory.md)** — Cấu hình biến Ansible

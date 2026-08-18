@@ -27,6 +27,8 @@ Hướng dẫn chi tiết từng dịch vụ ứng dụng và middleware trong c
 
 ## 🏗️ 3. Operations & Kiến Trúc (`docs/operations/`)
 
+- 💻 **[Client Machine Setup](operations/client-setup.md)** — Cài đặt và cấu hình Ansible Controller trên macOS, Linux, Windows WSL.
+- 🔒 **[RBAC & User Permissions Guide](operations/rbac-and-permissions.md)** — Hướng dẫn toàn diện phân quyền User/Group (`edit`, `view`, `admin`) trên CLI và Web Console.
 - ⚙️ **[System Requirements & Sizing](operations/requirements.md)** — Yêu cầu phần cứng tối thiểu, hỗ trợ đa hệ điều hành (Ubuntu, Debian, Fedora, RedHat, Rocky, Alma), tính toán RAM/CPU.
 - 🔒 **[Security Hardening & Best Practices](operations/security.md)** — Bảo mật SSH key, Ansible Vault encryption, phân quyền sudo, và Kubernetes RBAC.
 - 💡 **[Architecture Brainstorming & Tradeoffs](operations/brainstorm.md)** — Ghi chú so sánh kiến trúc giữa Vanilla K8s, K3s, OKD, OpenShift Console Standalone, và KubeSphere Core.
@@ -36,6 +38,7 @@ Hướng dẫn chi tiết từng dịch vụ ứng dụng và middleware trong c
 ## 📖 4. Reference & Cấu Hình (`docs/reference/`)
 
 - 📝 **[Inventory & Variables Reference](reference/inventory.md)** — Tham chiếu chi tiết file `hosts.ini`, `all.yml`, `k3s_control.yml`, và `k3s_workers.yml`.
+- 📦 **[ConfigMaps & Secrets Reference](reference/configmaps-and-secrets.md)** — Kiến trúc giải phóng tham số động, danh mục ConfigMaps & Secrets cho toàn bộ ứng dụng.
 - 🎩 **[Fedora / RHEL Specifics](reference/fedora-notes.md)** — Lưu ý và tinh chỉnh riêng cho Fedora Core / Server (SELinux, firewalld, cgroup v2).
 
 ---
