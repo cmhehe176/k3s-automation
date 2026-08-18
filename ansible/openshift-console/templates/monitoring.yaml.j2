@@ -143,23 +143,23 @@ data:
     groups:
     - name: node.rules
       rules:
-      - record: instance:node_cpu_utilisation:rate1m
+      - record: 'instance:node_cpu_utilisation:rate1m'
         expr: 1 - avg without (cpu, mode) (rate(node_cpu_seconds_total{mode="idle"}[1m]))
-      - record: instance:node_cpu:rate1m
+      - record: 'instance:node_cpu:rate1m'
         expr: rate(node_cpu_seconds_total{mode!="idle"}[1m])
-      - record: instance:node_memory_utilisation:ratio
+      - record: 'instance:node_memory_utilisation:ratio'
         expr: 1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)
-      - record: instance:node_memory_working_set:bytes
+      - record: 'instance:node_memory_working_set:bytes'
         expr: node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes
-      - record: instance:node_network_receive_bytes_excluding_lo:rate1m
+      - record: 'instance:node_network_receive_bytes_excluding_lo:rate1m'
         expr: sum without (device) (rate(node_network_receive_bytes_total{device!="lo"}[1m]))
-      - record: instance:node_network_transmit_bytes_excluding_lo:rate1m
+      - record: 'instance:node_network_transmit_bytes_excluding_lo:rate1m'
         expr: sum without (device) (rate(node_network_transmit_bytes_total{device!="lo"}[1m]))
-      - record: instance:node_filesystem_usage:ratio
+      - record: 'instance:node_filesystem_usage:ratio'
         expr: 1 - (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"})
-      - record: node_namespace_pod:kube_pod_info:
+      - record: 'node_namespace_pod:kube_pod_info:'
         expr: kube_pod_info
-      - record: node_role_os:kube_node_role:
+      - record: 'node_role_os:kube_node_role:'
         expr: kube_node_role
 ---
 apiVersion: apps/v1
