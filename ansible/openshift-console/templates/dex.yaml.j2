@@ -119,7 +119,9 @@ data:
   config.yaml: |
     issuer: https://{{ ansible_host }}:{{ console_oidc_port }}
     storage:
-      type: memory
+      type: sqlite3
+      config:
+        file: /var/dex/dex.db
     web:
       https: 0.0.0.0:5556
       tlsCert: /etc/dex/tls/tls.crt
@@ -145,6 +147,23 @@ data:
         userID: "{{ u.userID }}"
 {% endfor %}
 ---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: dex-data
+  namespace: {{ console_namespace }}
+  labels:
+    app: dex
+spec:
+  accessModes:
+    - ReadWriteOnce
+{% if dex_storage_class is defined and dex_storage_class != "" %}
+  storageClassName: {{ dex_storage_class }}
+{% endif %}
+  resources:
+    requests:
+      storage: {{ dex_storage_size | default('1Gi') }}
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -163,6 +182,8 @@ spec:
         app: dex
     spec:
       serviceAccountName: dex
+      securityContext:
+        fsGroup: 1001
       containers:
       - name: dex
         image: ghcr.io/dexidp/dex:v2.41.1
@@ -176,6 +197,8 @@ spec:
         - name: telemetry
           containerPort: 5558
         volumeMounts:
+        - name: dex-data
+          mountPath: /var/dex
         - name: config
           mountPath: /etc/dex/cfg
         - name: tls
@@ -201,6 +224,9 @@ spec:
             cpu: 200m
             memory: 256Mi
       volumes:
+      - name: dex-data
+        persistentVolumeClaim:
+          claimName: dex-data
       - name: config
         configMap:
           name: dex-config
