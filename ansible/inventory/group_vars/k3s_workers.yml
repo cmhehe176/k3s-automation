@@ -1,4 +1,4 @@
 ---
 # K3s Worker Configuration
-k3s_node_label:
-  - "node-role.kubernetes.io/worker=worker"
+k3s_node_label: []
+

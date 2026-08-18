@@ -94,3 +94,8 @@
   retries: 30
   delay: 5
   changed_when: false
+
+- name: Label agent node with worker role
+  command: /usr/local/bin/k3s kubectl label node {{ inventory_hostname }} node-role.kubernetes.io/worker=worker --overwrite
+  delegate_to: "{{ groups['k3s_control'][0] }}"
+  changed_when: false
