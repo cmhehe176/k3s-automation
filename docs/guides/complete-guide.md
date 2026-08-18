@@ -143,21 +143,21 @@ node-1 ansible_host=192.168.1.181 ansible_user=ndmc
 
 ### 2. Configure Vault & Secrets (Credentials Management)
 
-All cluster tokens, database passwords, S3 keys, and OpenShift Console admin credentials are centrally managed in `inventory/group_vars/vault.yml`:
+All cluster tokens, database passwords, S3 keys, and OpenShift Console admin credentials are centrally managed in `inventory/group_vars/all/vault.yml`:
 
 ```bash
 # Create your local vault.yml from the provided template
-cp ansible/inventory/group_vars/vault.example.yml ansible/inventory/group_vars/vault.yml
+cp ansible/inventory/group_vars/all/vault.example.yml ansible/inventory/group_vars/all/vault.yml
 
 # Edit passwords or customize environment variable mappings
-nano ansible/inventory/group_vars/vault.yml
+nano ansible/inventory/group_vars/all/vault.yml
 ```
 
 > [!NOTE]
-> `inventory/group_vars/vault.yml` and `vault.yaml` are automatically **IGNORED by Git**. Your secrets remain strictly local.
+> `inventory/group_vars/all/vault.yml` and `vault.yaml` are automatically **IGNORED by Git**. Your secrets remain strictly local.
 > To encrypt the vault file with AES-256:
 > ```bash
-> ansible-vault encrypt ansible/inventory/group_vars/vault.yml
+> ansible-vault encrypt ansible/inventory/group_vars/all/vault.yml
 > ```
 
 ### 3. Deploy Everything with Master CLI

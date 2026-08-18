@@ -4,12 +4,12 @@
 # ==============================================================================
 # Hướng dẫn sử dụng:
 #   1. Copy file này thành vault.yml:
-#      cp inventory/group_vars/vault.example.yml inventory/group_vars/vault.yml
+#      cp ansible/inventory/group_vars/all/vault.example.yml ansible/inventory/group_vars/all/vault.yml
 #
 #   2. Thay đổi các mật khẩu / secrets theo ý bạn hoặc dùng biến môi trường.
 #
 #   3. (Tùy chọn) Mã hóa file vault.yml bằng Ansible Vault:
-#      ansible-vault encrypt inventory/group_vars/vault.yml
+#      ansible-vault encrypt ansible/inventory/group_vars/all/vault.yml
 # ==============================================================================
 
 # --- K3s Cluster Token ---

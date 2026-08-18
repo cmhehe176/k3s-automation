@@ -99,16 +99,16 @@ ansible k3s_workers -m ping
 
 ---
 
-## 🔐 Cấu hình Vault & Quản lý Bí Mật (`group_vars/vault.yml`)
+## 🔐 Cấu hình Vault & Quản lý Bí Mật (`group_vars/all/vault.yml`)
 
 Mọi thông tin mật khẩu, token, secret key được gom về 1 nơi duy nhất:
 
 ```bash
 # 1. Tạo file vault.yml từ template mẫu
-cp ansible/inventory/group_vars/vault.example.yml ansible/inventory/group_vars/vault.yml
+cp ansible/inventory/group_vars/all/vault.example.yml ansible/inventory/group_vars/all/vault.yml
 
 # 2. Tùy chỉnh mật khẩu hoặc cấu hình biến môi trường
-nano ansible/inventory/group_vars/vault.yml
+nano ansible/inventory/group_vars/all/vault.yml
 ```
 
 | Biến | Mục đích | Nguồn fallback biến môi trường |
@@ -123,7 +123,7 @@ nano ansible/inventory/group_vars/vault.yml
 
 > 🔒 **Bảo mật**: `vault.yml` và `vault.yaml` được cấu hình **IGNORE trong Git 100%**. Để mã hoá file này bằng AES-256:
 > ```bash
-> ansible-vault encrypt ansible/inventory/group_vars/vault.yml
+> ansible-vault encrypt ansible/inventory/group_vars/all/vault.yml
 > ```
 
 ---
