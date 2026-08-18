@@ -45,6 +45,7 @@ show_help() {
 Usage: ./cluster.sh <command> [arguments...]
 
 Commands:
+  deploy-all              Deploy Full Stack (Core K3s, MetalLB, Longhorn, Console, Oracle, Redis, Redpanda, MinIO, ArgoCD)
   bootstrap [node]        Deploy prerequisites and bootstrap K3s Control Plane
   teardown [options]      Teardown cluster (--all, --node <name>, --workers)
   add-node <node...>      Add worker node(s) to the cluster
@@ -69,6 +70,7 @@ Commands:
   menu                    Open interactive management menu (default if no args)
 
 Examples:
+  ./cluster.sh deploy-all
   ./cluster.sh bootstrap node-1
   ./cluster.sh add-node node-2 node-3
   ./cluster.sh status
@@ -79,6 +81,50 @@ Examples:
   ./cluster.sh minio deploy
 
 EOF
+}
+
+# Command Handlers
+cmd_deploy_all() {
+    print_banner
+    echo -e "${GREEN}${BOLD}🚀 BẮT ĐẦU QUY TRÌNH TRIỂN KHAI TOÀN DIỆN (FULL STACK DEPLOYMENT)${NC}"
+    echo -e "${YELLOW}Thứ tự: Core (K3s, MetalLB, Longhorn) ➜ Console/Dex ➜ Middleware (Oracle, Redis, Redpanda, MinIO) ➜ ArgoCD ➜ Verification${NC}"
+    echo "================================================================"
+    echo ""
+
+    echo -e "${BOLD}${CYAN}▶️ [BƯỚC 1/10] Chuẩn bị hạ tầng & gói OS (Prerequisites)...${NC}"
+    ansible-playbook -i inventory/hosts.ini k3s/playbooks/00-prerequisites.yml
+
+    echo -e "${BOLD}${CYAN}▶️ [BƯỚC 2/10] Khởi tạo K3s Control Plane & CNI Network...${NC}"
+    ansible-playbook -i inventory/hosts.ini k3s/playbooks/01-k3s-control.yml
+
+    echo -e "${BOLD}${CYAN}▶️ [BƯỚC 3/10] Cấu hình MetalLB LoadBalancer L2 & IP Pool...${NC}"
+    ansible-playbook -i inventory/hosts.ini k3s/playbooks/03-metallb.yml
+
+    echo -e "${BOLD}${CYAN}▶️ [BƯỚC 4/10] Cài đặt Longhorn CSI Storage Driver & Default StorageClass...${NC}"
+    ansible-playbook -i inventory/hosts.ini k3s/playbooks/04-longhorn.yml
+
+    echo -e "${BOLD}${CYAN}▶️ [BƯỚC 5/10] Triển khai Red Hat OpenShift Web Console & Dex OIDC SSO...${NC}"
+    ansible-playbook -i inventory/hosts.ini openshift-console/playbooks/deploy.yml
+
+    echo -e "${BOLD}${CYAN}▶️ [BƯỚC 6/10] Triển khai Oracle Database XE với Persistent Storage...${NC}"
+    ansible-playbook -i inventory/hosts.ini oracle/playbooks/deploy.yml
+
+    echo -e "${BOLD}${CYAN}▶️ [BƯỚC 7/10] Khởi tạo Redis Cluster (6 Pods, 16,384 Hash Slots)...${NC}"
+    ansible-playbook -i inventory/hosts.ini redis/playbooks/deploy.yml
+
+    echo -e "${BOLD}${CYAN}▶️ [BƯỚC 8/10] Khởi tạo Redpanda Streaming Cluster & Web Console...${NC}"
+    ansible-playbook -i inventory/hosts.ini redpanda/playbooks/deploy.yml
+
+    echo -e "${BOLD}${CYAN}▶️ [BƯỚC 9/10] Triển khai MinIO S3 Object Storage & Web Console...${NC}"
+    ansible-playbook -i inventory/hosts.ini minio/playbooks/deploy.yml
+
+    echo -e "${BOLD}${CYAN}▶️ [BƯỚC 10/10] Triển khai ArgoCD GitOps Continuous Delivery...${NC}"
+    ansible-playbook -i inventory/hosts.ini argocd/playbooks/deploy.yml
+
+    echo ""
+    echo -e "${GREEN}${BOLD}🎉 TOÀN BỘ 10 BƯỚC TRIỂN KHAI ĐÃ HOÀN TẤT THÀNH CÔNG!${NC}"
+    echo "================================================================"
+    cmd_status
 }
 
 # Command Handlers
@@ -341,32 +387,38 @@ interactive_menu() {
         print_banner
         echo -e "${BOLD}Select an operation:${NC}"
         echo ""
-        echo -e "  ${GREEN}1)${NC} 🎯 Bootstrap Control Plane (Node-1)"
-        echo -e "  ${GREEN}2)${NC} ➕ Add Worker Node(s)"
-        echo -e "  ${GREEN}3)${NC} ➖ Remove Worker Node"
-        echo -e "  ${GREEN}4)${NC} 📊 Cluster Status & Health Check"
-        echo -e "  ${GREEN}5)${NC} 💾 Backup Cluster"
-        echo -e "  ${GREEN}6)${NC} 🔄 Restore Cluster"
-        echo -e "  ${GREEN}7)${NC} 🐙 ArgoCD (Deploy / Uninstall)"
-        echo -e "  ${GREEN}8)${NC} 🌐 KubeSphere (Deploy / Uninstall)"
-        echo -e "  ${GREEN}9)${NC} 🔴 OpenShift Console (Deploy / Uninstall)"
-        echo -e "  ${GREEN}10)${NC} 🗄️  Oracle Database (Deploy / Uninstall)"
-        echo -e "  ${GREEN}11)${NC} ⚡ Redis Cluster (Deploy / Uninstall)"
-        echo -e "  ${GREEN}12)${NC} 🐼 Redpanda / Kafka Cluster (Deploy / Uninstall)"
-        echo -e "  ${GREEN}13)${NC} 🪣 MinIO S3 Storage (Deploy / Uninstall)"
-        echo -e "  ${RED}14)${NC} 🗑️  Teardown Entire Cluster"
+        echo -e "  ${GREEN}1)${NC} 🌟 ${BOLD}Deploy Full Stack (Chạy Full luồng A-Z theo thứ tự chuẩn)${NC}"
+        echo -e "  ${GREEN}2)${NC} 🎯 Bootstrap Control Plane (Chỉ Core K3s, MetalLB, Longhorn)"
+        echo -e "  ${GREEN}3)${NC} ➕ Add Worker Node(s)"
+        echo -e "  ${GREEN}4)${NC} ➖ Remove Worker Node"
+        echo -e "  ${GREEN}5)${NC} 📊 Cluster Status & Health Check"
+        echo -e "  ${GREEN}6)${NC} 💾 Backup Cluster"
+        echo -e "  ${GREEN}7)${NC} 🔄 Restore Cluster"
+        echo -e "  ${GREEN}8)${NC} 🐙 ArgoCD (Deploy / Uninstall)"
+        echo -e "  ${GREEN}9)${NC} 🌐 KubeSphere (Deploy / Uninstall)"
+        echo -e "  ${GREEN}10)${NC} 🔴 OpenShift Console (Deploy / Uninstall)"
+        echo -e "  ${GREEN}11)${NC} 🗄️  Oracle Database (Deploy / Uninstall)"
+        echo -e "  ${GREEN}12)${NC} ⚡ Redis Cluster (Deploy / Uninstall)"
+        echo -e "  ${GREEN}13)${NC} 🐼 Redpanda / Kafka Cluster (Deploy / Uninstall)"
+        echo -e "  ${GREEN}14)${NC} 🪣 MinIO S3 Storage (Deploy / Uninstall)"
+        echo -e "  ${RED}15)${NC} 🗑️  Teardown Entire Cluster"
         echo -e "  ${CYAN}0)${NC} ❌ Exit"
         echo ""
-        read -p "Enter choice [0-14]: " choice
+        read -p "Enter choice [0-15]: " choice
 
         case $choice in
             1)
+                echo -e "${YELLOW}Deploying Full Stack (Core ➜ Console ➜ Middlewares ➜ ArgoCD)...${NC}"
+                cmd_deploy_all
+                read -p "Press Enter to continue..."
+                ;;
+            2)
                 read -p "Enter control node name [default: node-1]: " target_node
                 target_node="${target_node:-node-1}"
                 cmd_bootstrap "$target_node"
                 read -p "Press Enter to continue..."
                 ;;
-            2)
+            3)
                 read -p "Enter worker node name(s) (space-separated, e.g. node-2 node-3): " worker_nodes
                 if [ -n "$worker_nodes" ]; then
                     cmd_add_node $worker_nodes
@@ -375,7 +427,7 @@ interactive_menu() {
                 fi
                 read -p "Press Enter to continue..."
                 ;;
-            3)
+            4)
                 read -p "Enter worker node name to remove (e.g. node-2): " worker_node
                 if [ -n "$worker_node" ]; then
                     cmd_remove_node "$worker_node"
@@ -384,15 +436,15 @@ interactive_menu() {
                 fi
                 read -p "Press Enter to continue..."
                 ;;
-            4)
+            5)
                 cmd_status
                 read -p "Press Enter to continue..."
                 ;;
-            5)
+            6)
                 cmd_backup
                 read -p "Press Enter to continue..."
                 ;;
-            6)
+            7)
                 read -p "Enter path to backup file: " backup_file
                 if [ -n "$backup_file" ]; then
                     cmd_restore "$backup_file"
@@ -401,7 +453,7 @@ interactive_menu() {
                 fi
                 read -p "Press Enter to continue..."
                 ;;
-            7)
+            8)
                 echo "1) Deploy ArgoCD"
                 echo "2) Uninstall ArgoCD"
                 read -p "Select ArgoCD action [1-2]: " argo_choice
@@ -412,7 +464,7 @@ interactive_menu() {
                 fi
                 read -p "Press Enter to continue..."
                 ;;
-            8)
+            9)
                 echo "1) Deploy KubeSphere"
                 echo "2) Uninstall KubeSphere"
                 read -p "Select KubeSphere action [1-2]: " ks_choice
@@ -423,7 +475,7 @@ interactive_menu() {
                 fi
                 read -p "Press Enter to continue..."
                 ;;
-            9)
+            10)
                 echo "1) Deploy OpenShift Console"
                 echo "2) Uninstall OpenShift Console"
                 read -p "Select Console action [1-2]: " oc_choice
@@ -434,7 +486,7 @@ interactive_menu() {
                 fi
                 read -p "Press Enter to continue..."
                 ;;
-            10)
+            11)
                 echo "1) Deploy Oracle Database"
                 echo "2) Uninstall Oracle Database"
                 read -p "Select Oracle action [1-2]: " ora_choice
@@ -445,7 +497,7 @@ interactive_menu() {
                 fi
                 read -p "Press Enter to continue..."
                 ;;
-            11)
+            12)
                 echo "1) Deploy Redis Cluster"
                 echo "2) Uninstall Redis Cluster"
                 read -p "Select Redis action [1-2]: " red_choice
@@ -456,7 +508,7 @@ interactive_menu() {
                 fi
                 read -p "Press Enter to continue..."
                 ;;
-            12)
+            13)
                 echo "1) Deploy Redpanda Cluster"
                 echo "2) Uninstall Redpanda Cluster"
                 read -p "Select Redpanda action [1-2]: " rp_choice
@@ -467,7 +519,7 @@ interactive_menu() {
                 fi
                 read -p "Press Enter to continue..."
                 ;;
-            13)
+            14)
                 echo "1) Deploy MinIO S3 Storage"
                 echo "2) Uninstall MinIO S3 Storage"
                 read -p "Select MinIO action [1-2]: " min_choice
@@ -478,7 +530,7 @@ interactive_menu() {
                 fi
                 read -p "Press Enter to continue..."
                 ;;
-            14)
+            15)
                 echo -e "${RED}WARNING: This will completely destroy the cluster!${NC}"
                 read -p "Type 'yes' to confirm: " confirm
                 if [ "$confirm" == "yes" ]; then
@@ -510,6 +562,9 @@ fi
 shift || true
 
 case "$ACTION" in
+    deploy-all|all|full|full-deploy)
+        cmd_deploy_all "$@"
+        ;;
     bootstrap)
         cmd_bootstrap "$@"
         ;;
