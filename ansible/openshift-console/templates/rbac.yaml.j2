@@ -1,4 +1,30 @@
 ---
+# ==============================================================================
+# 👑 1. SUPERADMINS (Cluster-Admin: Toàn quyền quản trị tối cao toàn bộ cụm)
+# ==============================================================================
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: dex-superadmins-binding
+subjects:
+- kind: Group
+  name: superadmins
+  apiGroup: rbac.authorization.k8s.io
+{% for u in console_users %}
+{% if 'superadmins' in u.groups %}
+- kind: User
+  name: {{ u.email }}
+  apiGroup: rbac.authorization.k8s.io
+{% endif %}
+{% endfor %}
+roleRef:
+  kind: ClusterRole
+  name: cluster-admin
+  apiGroup: rbac.authorization.k8s.io
+---
+# ==============================================================================
+# 🛡️ 2. ADMINS (Hiện tại: Toàn quyền cụm | Tương lai: Có thể đổi sang RoleBinding từng NS)
+# ==============================================================================
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:

@@ -27,42 +27,44 @@ Trong Kubernetes & OpenShift, quyền hạn được chia theo các cấp độ 
 
 ---
 
-## 👥 2. Quản Lý Tài Khoản & Nhóm Người Dùng
+## 👥 2. Quản Lý Tài Khoản & Phân Nhóm (SuperAdmin vs Admin vs Dev)
 
 Tất cả tài khoản SSO đăng nhập OpenShift Console được quản lý tập trung tại file [`ansible/inventory/group_vars/all/vault.yml`](file:///Users/congminh/pro/k3s-automation/ansible/inventory/group_vars/all/vault.yml).
 
-### Cách thêm tài khoản và gán Nhóm:
+### Bảng Phân Cấp Nhóm Quyền:
 
-Mở file `ansible/inventory/group_vars/all/vault.yml` và chỉnh sửa danh sách `console_users`:
+| Nhóm (Group) | Quyền mặc định | Mục đích & Khả năng giới hạn Namespace |
+| :--- | :--- | :--- |
+| **`superadmins`** | `ClusterRole/cluster-admin` | 👑 **Quản trị tối cao toàn cụm:** Toàn quyền 100% trên tất cả Namespace (kể cả system, vault, console), không bị giới hạn. |
+| **`admins`** | `ClusterRole/cluster-admin` (Hiện tại) | 🛡️ **Quản trị viên:** Hiện tại có toàn quyền mọi namespace. **Tương lai có thể giới hạn** chỉ cho phép thao tác trên các Namespace nhất định. |
+| **`developers`** | `ClusterRole/view` + `RoleBinding/edit` (default) | 💻 **Lập trình viên:** Chỉ xem thông tin cụm và được phân quyền làm việc theo từng Namespace dự án. |
+
+---
+
+### Cấu hình mẫu trong `vault.yml`:
 
 ```yaml
 console_users:
-  # 1. Tài khoản Quản trị tối cao (Admin)
+  # 1. Tài khoản Quản trị tối cao (Superadmin)
+  - username: "superadmin"
+    email: "superadmin@ndmc.pro"
+    password: "{{ lookup('env', 'CONSOLE_ADMIN_PASSWORD') | default('ndmc@2026', true) }}"
+    groups:
+      - "superadmins"
+
+  # 2. Tài khoản Quản trị viên (Admin - sẵn sàng cho việc giới hạn NS sau này)
   - username: "admin"
-    email: "admin@ndmc.pro"
-    password: "AdminPassword@2026"
+    email: "admin@mbfs.vn"
+    password: "{{ lookup('env', 'CONSOLE_ADMIN_PASSWORD') | default('Admin@2026', true) }}"
     groups:
       - "admins"
 
-  # 2. Developer dùng chung nhóm 'developers'
+  # 3. Developer dùng chung nhóm 'developers'
   - username: "developer"
-    email: "dev@ndmc.pro"
-    password: "DevPassword@2026"
+    email: "dev@mbfs.pro"
+    password: "{{ lookup('env', 'CONSOLE_DEV_PASSWORD') | default('Dev@2026', true) }}"
     groups:
       - "developers"
-
-  # 3. Developer thuộc Team Dự Án riêng biệt
-  - username: "nam-dvc"
-    email: "nam@ndmc.pro"
-    password: "PasswordNam@2026"
-    groups:
-      - "dvc-team"
-
-  - username: "hung-payment"
-    email: "hung@ndmc.pro"
-    password: "PasswordHung@2026"
-    groups:
-      - "payment-team"
 ```
 
 ### Cập nhật tài khoản mới vào hệ thống:
@@ -70,6 +72,39 @@ Sau khi chỉnh sửa `vault.yml`, chạy lệnh sau để cập nhật SSO Dex:
 ```bash
 ./cluster.sh console deploy
 ```
+
+---
+
+### 🛡️ Hướng dẫn: Cách giới hạn Namespace cho nhóm `admins` trong tương lai
+
+Khi bạn muốn chuyển nhóm `admins` từ quyền Toàn cụm sang chỉ quản lý các Namespace nghiệp vụ cụ thể (và **cấm** truy cập các Namespace nhạy cảm như `kube-system`, `openshift-console`,...):
+
+#### Cách 1: Chuyển đổi trong Template RBAC (`rbac.yaml.j2`)
+1. Trong file [`ansible/openshift-console/templates/rbac.yaml.j2`](file:///Users/congminh/pro/k3s-automation/ansible/openshift-console/templates/rbac.yaml.j2), đổi `dex-admins-binding` từ `ClusterRoleBinding` sang `RoleBinding` theo từng Namespace:
+   ```yaml
+   # Chỉ cấp quyền admin cho nhóm admins trên namespace 'mbfs-app'
+   apiVersion: rbac.authorization.k8s.io/v1
+   kind: RoleBinding
+   metadata:
+     name: dex-admins-mbfs-app-binding
+     namespace: mbfs-app
+   subjects:
+   - kind: Group
+     name: admins
+     apiGroup: rbac.authorization.k8s.io
+   roleRef:
+     kind: ClusterRole
+     name: admin
+     apiGroup: rbac.authorization.k8s.io
+   ```
+2. Chạy lại `./cluster.sh console deploy`.
+
+#### Cách 2: Bật / Tắt trực tiếp trên Web Console (Bằng tài khoản `superadmin`)
+- Xóa `ClusterRoleBinding/dex-admins-binding`:
+  ```bash
+  kubectl delete clusterrolebinding dex-admins-binding
+  ```
+- Từ đó về sau, `superadmin` có thể vào từng Namespace trên OpenShift Console để **Create Binding** hoặc **Delete Binding** cho nhóm `admins` theo ý muốn.
 
 ---
 

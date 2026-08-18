@@ -34,14 +34,20 @@ console_cookie_auth_key: "{{ lookup('env', 'COOKIE_AUTH_KEY') | default('k3sCons
 
 # --- OpenShift Console Dex OIDC Users ---
 console_users:
+  - username: "superadmin"
+    email: "superadmin@ndmc.pro"
+    password: "{{ lookup('env', 'CONSOLE_ADMIN_PASSWORD') | default('ndmc@2026', true) }}"
+    groups:
+      - "superadmins"
+
   - username: "admin"
-    email: "admin@ndmc.pro"
-    password: "{{ lookup('env', 'CONSOLE_ADMIN_PASSWORD') | default('Admin@2026', true) }}"
+    email: "admin@mbfs.vn"
+    password: "{{ lookup('env', 'CONSOLE_ADMIN_PASSWORD') | default('Hihi@1234', true) }}"
     groups:
       - "admins"
 
   - username: "developer"
-    email: "dev@ndmc.pro"
-    password: "{{ lookup('env', 'CONSOLE_DEV_PASSWORD') | default('Dev@2026', true) }}"
+    email: "dev@mbfs.pro"
+    password: "{{ lookup('env', 'CONSOLE_DEV_PASSWORD') | default('Hihi@1234', true) }}"
     groups:
       - "developers"
