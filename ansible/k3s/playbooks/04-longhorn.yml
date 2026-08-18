@@ -106,6 +106,8 @@
             "--csi-snapshotter-replica-count", "1"
           ]}
         ]'
+        kubectl patch setting.longhorn.io replica-soft-anti-affinity -n longhorn-system --type='json' -p='[{"op": "replace", "path": "/value", "value": "true"}]'
+        kubectl patch setting.longhorn.io guaranteed-instance-manager-cpu -n longhorn-system --type='json' -p='[{"op": "replace", "path": "/value", "value": "25"}]'
       changed_when: true
 
     - name: Configure Longhorn frontend service as LoadBalancer

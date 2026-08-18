@@ -66,6 +66,8 @@ data:
   BRIDGE_PROMETHEUS_PUBLIC_URL: "http://{{ ansible_host }}:{{ console_nodeport }}/api/prometheus"
   BRIDGE_THANOS_PUBLIC_URL: "http://{{ ansible_host }}:{{ console_nodeport }}/api/prometheus-tenancy"
   BRIDGE_LISTEN: "http://0.0.0.0:9000"
+  BRIDGE_PLUGINS: "networking-console-plugin=http://networking-console-plugin.{{ console_namespace }}.svc:8080,monitoring-plugin=http://monitoring-console-plugin.{{ console_namespace }}.svc:9443"
+  BRIDGE_I18N_NAMESPACES: "plugin__networking-console-plugin,plugin__monitoring-plugin"
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -150,3 +152,298 @@ spec:
   - name: https
     port: 443
     targetPort: 9000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: networking-console-plugin
+  namespace: {{ console_namespace }}
+  labels:
+    app: networking-console-plugin
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: networking-console-plugin
+  template:
+    metadata:
+      labels:
+        app: networking-console-plugin
+    spec:
+      containers:
+      - name: plugin
+        image: quay.io/orenc/networking-console-plugin:4.16
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080
+          name: http
+        resources:
+          requests:
+            cpu: 10m
+            memory: 32Mi
+          limits:
+            cpu: 100m
+            memory: 128Mi
+        volumeMounts:
+        - name: manifest-override
+          mountPath: /opt/app-root/src/plugin-manifest.json
+          subPath: plugin-manifest.json
+      volumes:
+      - name: manifest-override
+        configMap:
+          name: networking-plugin-manifest
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: networking-plugin-manifest
+  namespace: {{ console_namespace }}
+data:
+  plugin-manifest.json: |
+    {
+      "name": "networking-console-plugin",
+      "version": "0.0.1",
+      "dependencies": {
+        "@console/pluginAPI": "*"
+      },
+      "customProperties": {
+        "console": {
+          "displayName": "Networking console plugin",
+          "description": "Plugin responsible for all the networking section ui code"
+        }
+      },
+      "extensions": [
+        {
+          "type": "console.page/resource/list",
+          "properties": {
+            "component": { "$codeRef": "ServiceList" },
+            "model": { "group": "core", "kind": "Service", "version": "v1" }
+          }
+        },
+        {
+          "type": "console.navigation/resource-ns",
+          "properties": {
+            "dataAttributes": { "data-quickstart-id": "qs-nav-services", "data-test-id": "services-nav-item" },
+            "id": "services",
+            "model": { "group": "core", "kind": "Service", "version": "v1" },
+            "name": "Services",
+            "section": "networking"
+          }
+        },
+        {
+          "type": "console.navigation/resource-ns",
+          "properties": {
+            "dataAttributes": { "data-quickstart-id": "qs-nav-routes", "data-test-id": "routes-nav-item" },
+            "id": "routes",
+            "model": { "group": "route.openshift.io", "kind": "Route", "version": "v1" },
+            "name": "Routes",
+            "section": "networking"
+          }
+        },
+        {
+          "type": "console.navigation/resource-ns",
+          "properties": {
+            "dataAttributes": { "data-quickstart-id": "qs-nav-ingresses", "data-test-id": "ingresses-nav-item" },
+            "id": "ingresses",
+            "model": { "group": "networking.k8s.io", "kind": "Ingress", "version": "v1" },
+            "name": "Ingresses",
+            "section": "networking"
+          }
+        },
+        {
+          "type": "console.navigation/resource-ns",
+          "properties": {
+            "dataAttributes": { "data-quickstart-id": "qs-nav-np", "data-test-id": "np-nav-item" },
+            "id": "networkPolicies",
+            "model": { "group": "networking.k8s.io", "kind": "NetworkPolicy", "version": "v1" },
+            "name": "NetworkPolicies",
+            "section": "networking"
+          }
+        },
+        {
+          "type": "console.yaml-template",
+          "properties": {
+            "model": { "group": "core", "kind": "Service", "version": "v1" },
+            "name": "default",
+            "template": { "$codeRef": "yamlTemplates.ServiceYAMLTemplates" }
+          }
+        },
+        {
+          "type": "console.page/resource/details",
+          "properties": {
+            "component": { "$codeRef": "ServiceDetails" },
+            "model": { "group": "core", "kind": "Service", "version": "v1" }
+          }
+        },
+        {
+          "type": "console.page/resource/list",
+          "properties": {
+            "component": { "$codeRef": "NetworkPolicyPage" },
+            "model": { "group": "networking.k8s.io", "kind": "NetworkPolicy", "version": "v1" }
+          }
+        },
+        {
+          "type": "console.page/resource/list",
+          "properties": {
+            "component": { "$codeRef": "NetworkPolicyPage" },
+            "model": { "group": "k8s.cni.cncf.io", "kind": "MultiNetworkPolicy", "version": "v1beta1" }
+          }
+        },
+        {
+          "type": "console.page/route",
+          "properties": {
+            "component": { "$codeRef": "NetworkPolicyPage" },
+            "exact": true,
+            "path": ["/k8s/ns/:ns/networking.k8s.io~v1~NetworkPolicy/enable-multi", "/k8s/all-namespaces/networking.k8s.io~v1~NetworkPolicy/enable-multi"],
+            "perspective": "admin"
+          }
+        },
+        {
+          "type": "console.page/route",
+          "properties": {
+            "component": { "$codeRef": "NetworkPolicyForm" },
+            "exact": true,
+            "path": ["/k8s/ns/:ns/networking.k8s.io~v1~NetworkPolicy/~new/form", "/k8s/ns/:ns/k8s.cni.cncf.io~v1beta1~MultiNetworkPolicy/~new/form"],
+            "perspective": "admin"
+          }
+        },
+        {
+          "type": "console.page/resource/details",
+          "properties": {
+            "component": { "$codeRef": "NetworkPolicyDetailsPage" },
+            "model": { "group": "networking.k8s.io", "kind": "NetworkPolicy", "version": "v1" }
+          }
+        },
+        {
+          "type": "console.page/resource/details",
+          "properties": {
+            "component": { "$codeRef": "NetworkPolicyDetailsPage" },
+            "model": { "group": "k8s.cni.cncf.io", "kind": "MultiNetworkPolicy", "version": "v1beta1" }
+          }
+        },
+        {
+          "type": "console.page/resource/list",
+          "properties": {
+            "component": { "$codeRef": "NetworkAttachmentDefinitionList" },
+            "model": { "group": "k8s.cni.cncf.io", "kind": "NetworkAttachmentDefinition", "version": "v1" }
+          }
+        },
+        {
+          "flags": { "required": ["NET_ATTACH_DEF", "KUBEVIRT"] },
+          "type": "console.navigation/resource-ns",
+          "properties": {
+            "dataAttributes": { "data-quickstart-id": "qs-nav-nads", "data-test-id": "nads-nav-item" },
+            "id": "networkattachmentdefinitions",
+            "model": { "group": "k8s.cni.cncf.io", "kind": "NetworkAttachmentDefinition", "version": "v1" },
+            "name": "NetworkAttachmentDefinitions",
+            "section": "networking"
+          }
+        },
+        {
+          "type": "console.flag",
+          "properties": {
+            "handler": { "$codeRef": "networkingFlags.enableNetworkingDynamicFlag" }
+          }
+        }
+      ],
+      "registrationMethod": "callback",
+      "baseURL": "/api/plugins/networking-console-plugin/",
+      "loadScripts": ["plugin-entry.96fdcc7e201f483f2898.min.js"],
+      "buildHash": "96fdcc7e201f483f2898988577ad423d"
+    }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: networking-console-plugin
+  namespace: {{ console_namespace }}
+  labels:
+    app: networking-console-plugin
+spec:
+  ports:
+  - port: 8080
+    targetPort: 8080
+    name: http
+  selector:
+    app: networking-console-plugin
+---
+apiVersion: console.openshift.io/v1
+kind: ConsolePlugin
+metadata:
+  name: networking-console-plugin
+spec:
+  displayName: 'Networking console plugin'
+  backend:
+    type: Service
+    service:
+      name: networking-console-plugin
+      namespace: {{ console_namespace }}
+      port: 8080
+      basePath: /
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: monitoring-console-plugin
+  namespace: {{ console_namespace }}
+  labels:
+    app: monitoring-console-plugin
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: monitoring-console-plugin
+  template:
+    metadata:
+      labels:
+        app: monitoring-console-plugin
+    spec:
+      containers:
+      - name: plugin
+        image: quay.io/openshift-observability-ui/monitoring-console-plugin:v1.0.0
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 9443
+          name: https
+        - containerPort: 9001
+          name: http
+        resources:
+          requests:
+            cpu: 10m
+            memory: 32Mi
+          limits:
+            cpu: 100m
+            memory: 128Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: monitoring-console-plugin
+  namespace: {{ console_namespace }}
+  labels:
+    app: monitoring-console-plugin
+spec:
+  ports:
+  - port: 9443
+    targetPort: 9443
+    name: https
+  - port: 9001
+    targetPort: 9001
+    name: http
+  selector:
+    app: monitoring-console-plugin
+---
+apiVersion: console.openshift.io/v1
+kind: ConsolePlugin
+metadata:
+  name: monitoring-plugin
+spec:
+  displayName: 'Monitoring'
+  backend:
+    type: Service
+    service:
+      name: monitoring-console-plugin
+      namespace: {{ console_namespace }}
+      port: 9443
+      basePath: /
+

@@ -180,6 +180,30 @@
       failed_when: false
       changed_when: false
 
+    - name: Clean temporary OpenShift CRDs directory
+      file:
+        path: /tmp/openshift-console/crds
+        state: absent
+
+    - name: Ensure OpenShift CRDs directory exists
+      file:
+        path: /tmp/openshift-console/crds
+        state: directory
+        mode: '0755'
+
+    - name: Copy OpenShift API CRD manifests
+      copy:
+        src: ../manifests/crds/
+        dest: /tmp/openshift-console/crds/
+        mode: '0644'
+
+    - name: Apply OpenShift API CRDs to enable full Console navigation tabs
+      command: kubectl apply -f /tmp/openshift-console/crds/
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      register: apply_crds
+      changed_when: "'created' in apply_crds.stdout"
+
     - name: Render OpenShift Monitoring manifest template
       template:
         src: ../templates/monitoring.yaml.j2
