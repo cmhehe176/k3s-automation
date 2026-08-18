@@ -117,17 +117,20 @@
       register: apply_dex
       changed_when: "'created' in apply_dex.stdout or 'configured' in apply_dex.stdout"
 
+    - name: Restart Dex OIDC deployment to reload user database and config
+      command: kubectl rollout restart deployment/dex -n {{ console_namespace }}
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      changed_when: true
+
     - name: Wait for Dex OIDC deployment to be available
       command: >
-        kubectl wait --namespace {{ console_namespace }}
-        --for=condition=Available deployment/dex
+        kubectl rollout status deployment/dex
+        --namespace {{ console_namespace }}
         --timeout=180s
       environment:
         KUBECONFIG: "{{ kubeconfig_path }}"
       register: dex_ready
-      retries: 20
-      delay: 5
-      until: dex_ready.rc == 0
       changed_when: false
 
     - name: Copy Dex CA to K3s config directory
