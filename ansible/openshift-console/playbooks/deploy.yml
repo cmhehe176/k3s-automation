@@ -8,7 +8,7 @@
 
   vars:
     console_namespace: "openshift-console"
-    console_image: "quay.io/openshift/origin-console:latest"
+    console_image: "quay.io/openshift/origin-console:4.19"
     console_service_type: "LoadBalancer"
     node_ip: "{{ ansible_default_ipv4.address | default(ansible_host) }}"
     kubeconfig_path: "/etc/rancher/k3s/k3s.yaml"
@@ -173,6 +173,13 @@
         timeout: 120
       when: (k3s_oidc_config.changed | default(false)) or (dex_ca_copy.changed | default(false)) or (apply_dex.changed | default(false))
 
+    - name: Clean up legacy openshift-monitoring namespace if present
+      command: kubectl delete namespace openshift-monitoring --ignore-not-found=true --timeout=60s
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      failed_when: false
+      changed_when: false
+
     - name: Render OpenShift Monitoring manifest template
       template:
         src: ../templates/monitoring.yaml.j2
@@ -185,6 +192,12 @@
         KUBECONFIG: "{{ kubeconfig_path }}"
       register: apply_monitoring
       changed_when: "'created' in apply_monitoring.stdout or 'configured' in apply_monitoring.stdout"
+
+    - name: Restart Prometheus deployment to reload rules and scrape config
+      command: kubectl rollout restart deployment/prometheus -n {{ console_namespace }}
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      changed_when: true
 
     - name: Render OpenShift Console manifest template
       template:

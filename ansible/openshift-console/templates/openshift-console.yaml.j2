@@ -57,12 +57,15 @@ data:
   BRIDGE_USER_SETTINGS_LOCATION: "localstorage"
   BRIDGE_CUSTOM_PRODUCT_NAME: "Red Hat OpenShift Container Platform"
   BRIDGE_CUSTOM_LOGO_FILES: "Dark=/var/run/secrets/console-logos/openshift-logo-dark.svg,Light=/var/run/secrets/console-logos/openshift-logo-light.svg"
-  BRIDGE_CUSTOM_FAVICON_FILES: "Dark=/opt/bridge/static/imgs/openshift-favicon.png,Light=/opt/bridge/static/imgs/openshift-favicon.png"
   BRIDGE_BASE_ADDRESS: "http://{{ ansible_host }}:{{ console_nodeport }}"
-  BRIDGE_K8S_MODE: "in-cluster"
+  BRIDGE_K8S_MODE: "off-cluster"
+  BRIDGE_K8S_MODE_OFF_CLUSTER_ENDPOINT: "https://kubernetes.default.svc"
+  BRIDGE_K8S_MODE_OFF_CLUSTER_SKIP_VERIFY_TLS: "true"
+  BRIDGE_K8S_MODE_OFF_CLUSTER_THANOS: "http://prometheus.{{ console_namespace }}.svc:9090"
+  BRIDGE_K8S_MODE_OFF_CLUSTER_ALERTMANAGER: "http://prometheus.{{ console_namespace }}.svc:9090"
+  BRIDGE_PROMETHEUS_PUBLIC_URL: "http://{{ ansible_host }}:{{ console_nodeport }}/api/prometheus"
+  BRIDGE_THANOS_PUBLIC_URL: "http://{{ ansible_host }}:{{ console_nodeport }}/api/prometheus-tenancy"
   BRIDGE_LISTEN: "http://0.0.0.0:9000"
-  BRIDGE_PROMETHEUS_URL: "http://prometheus.openshift-monitoring.svc:9090"
-  BRIDGE_PROMETHEUS_TEN_URL: "http://prometheus.openshift-monitoring.svc:9090"
 ---
 apiVersion: apps/v1
 kind: Deployment
