@@ -13,41 +13,49 @@
 # ==============================================================================
 
 # --- K3s Cluster Token ---
-k3s_token: "{{ lookup('env', 'K3S_TOKEN') | default('K3sSecretClusterToken2026SecureKey', true) }}"
+k3s_token: "K3sSecretClusterToken2026SecureKey"
+
+# --- ArgoCD Admin Credentials ---
+argocd_admin_user: "admin"
+argocd_admin_password: "Admin@2026"
+
+# --- KubeSphere Console Credentials ---
+kubesphere_admin_user: "admin"
+kubesphere_admin_password: "P@88w0rd"
 
 # --- Oracle Database XE Credentials ---
-oracle_sys_password: "{{ lookup('env', 'ORACLE_SYS_PASSWORD') | default('Oracle@2026', true) }}"
-oracle_app_user: "{{ lookup('env', 'ORACLE_APP_USER') | default('app_user', true) }}"
-oracle_app_password: "{{ lookup('env', 'ORACLE_APP_PASSWORD') | default('App@2026', true) }}"
+oracle_sys_password: "Oracle@2026"
+oracle_app_user: "app_user"
+oracle_app_password: "App@2026"
 
 # --- Redis Cluster Credentials ---
-redis_password: "{{ lookup('env', 'REDIS_PASSWORD') | default('Redis@2026', true) }}"
+redis_password: "Redis@2026"
 
 # --- MinIO S3 Object Storage Credentials ---
-minio_root_user: "{{ lookup('env', 'MINIO_ROOT_USER') | default('minioadmin', true) }}"
-minio_root_password: "{{ lookup('env', 'MINIO_ROOT_PASSWORD') | default('Minio@2026', true) }}"
+minio_root_user: "minioadmin"
+minio_root_password: "Minio@2026"
 
 # --- Red Hat OpenShift Web Console & Dex OIDC Keys ---
-console_client_secret: "{{ lookup('env', 'CONSOLE_CLIENT_SECRET') | default('OpenShiftConsoleSecretKey2026', true) }}"
-console_cookie_encryption_key: "{{ lookup('env', 'COOKIE_ENCRYPTION_KEY') | default('k3sConsoleCookieEncryptKey32Byte', true) }}"
-console_cookie_auth_key: "{{ lookup('env', 'COOKIE_AUTH_KEY') | default('k3sConsoleCookieAuthKey64ByteLongRandomStringForSessionValidation12', true) }}"
+console_client_secret: "OpenShiftConsoleSecretKey2026"
+console_cookie_encryption_key: "k3sConsoleCookieEncryptKey32Byte"
+console_cookie_auth_key: "k3sConsoleCookieAuthKey64ByteLongRandomStringForSessionValidation12"
 
 # --- OpenShift Console Dex OIDC Users ---
 console_users:
   - username: "superadmin"
-    email: "superadmin@ndmc.pro"
-    password: "{{ lookup('env', 'CONSOLE_ADMIN_PASSWORD') | default('ndmc@2026', true) }}"
+    email: "superadmin@mbfs.vn"
+    password: "Admin@2026"
     groups:
       - "superadmins"
 
   - username: "admin"
     email: "admin@mbfs.vn"
-    password: "{{ lookup('env', 'CONSOLE_ADMIN_PASSWORD') | default('Hihi@1234', true) }}"
+    password: "Hihi@1234"
     groups:
       - "admins"
 
   - username: "developer"
     email: "dev@mbfs.pro"
-    password: "{{ lookup('env', 'CONSOLE_DEV_PASSWORD') | default('Hihi@1234', true) }}"
+    password: "Hihi@1234"
     groups:
       - "developers"

@@ -65,10 +65,14 @@ spec:
       labels:
         app: oracle-db
     spec:
+      terminationGracePeriodSeconds: 120
       initContainers:
       - name: fix-permissions
         image: busybox:latest
-        command: ["sh", "-c", "chown -R 54321:54321 /opt/oracle/oradata && chmod -R 777 /opt/oracle/oradata"]
+        command:
+        - "sh"
+        - "-c"
+        - "chown -R 54321:54321 /opt/oracle/oradata && chmod -R 777 /opt/oracle/oradata"
         volumeMounts:
         - name: oracle-data
           mountPath: /opt/oracle/oradata
@@ -100,6 +104,8 @@ spec:
         volumeMounts:
         - name: oracle-data
           mountPath: /opt/oracle/oradata
+        - name: dshm
+          mountPath: /dev/shm
         resources:
           requests:
             cpu: 500m
@@ -112,23 +118,36 @@ spec:
             command:
             - /bin/bash
             - -c
-            - "$ORACLE_HOME/bin/sqlplus -s / as sysdba <<< 'SELECT 1 FROM DUAL;' || exit 1"
+            - "$ORACLE_HOME/bin/sqlplus -s / as sysdba <<< 'SELECT 1 FROM DUAL;' | grep -q 1 || exit 1"
           initialDelaySeconds: 30
           periodSeconds: 10
-          failureThreshold: 30
+          failureThreshold: 60
         livenessProbe:
           exec:
             command:
             - /bin/bash
             - -c
-            - "$ORACLE_HOME/bin/sqlplus -s / as sysdba <<< 'SELECT 1 FROM DUAL;' || exit 1"
-          initialDelaySeconds: 10
+            - "$ORACLE_HOME/bin/sqlplus -s / as sysdba <<< 'SELECT 1 FROM DUAL;' | grep -q 1 || exit 1"
+          initialDelaySeconds: 30
           periodSeconds: 30
+          failureThreshold: 5
+        readinessProbe:
+          exec:
+            command:
+            - /bin/bash
+            - -c
+            - "$ORACLE_HOME/bin/sqlplus -s / as sysdba <<< 'SELECT 1 FROM DUAL;' | grep -q 1 || exit 1"
+          initialDelaySeconds: 15
+          periodSeconds: 15
           failureThreshold: 3
       volumes:
       - name: oracle-data
         persistentVolumeClaim:
           claimName: oracle-pvc
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 2Gi
 ---
 apiVersion: v1
 kind: Service
@@ -138,7 +157,7 @@ metadata:
   labels:
     app: oracle-db
 spec:
-  type: NodePort
+  type: LoadBalancer
   selector:
     app: oracle-db
   ports:

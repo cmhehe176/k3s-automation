@@ -129,15 +129,18 @@ metadata:
   labels:
     app: minio
 spec:
-  type: NodePort
+  type: LoadBalancer
   selector:
     app: minio
   ports:
+  - name: console-http
+    port: 80
+    targetPort: 9001
+    nodePort: {{ minio_console_nodeport }}
+  - name: console-https
+    port: 443
+    targetPort: 9001
   - name: s3-api
     port: 9000
     targetPort: 9000
     nodePort: {{ minio_api_nodeport }}
-  - name: console
-    port: 9001
-    targetPort: 9001
-    nodePort: {{ minio_console_nodeport }}

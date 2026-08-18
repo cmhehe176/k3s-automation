@@ -17,8 +17,8 @@ cluster_dns: 10.43.0.10
 # System Settings
 system_timezone: Asia/Ho_Chi_Minh
 
-# MetalLB Configuration (adjust according to your network)
-metallb_ip_range: 192.168.1.100-192.168.1.150
+# MetalLB Configuration (250 IP dải riêng 10.200.10.x - hoàn toàn tách biệt khỏi LAN và Tailscale)
+metallb_ip_range: 10.200.10.1-10.200.10.250
 
 # Global Kubeconfig Path
 kubeconfig_path: "/etc/rancher/k3s/k3s.yaml"

@@ -220,11 +220,14 @@ metadata:
   labels:
     app: redpanda-console
 spec:
-  type: NodePort
+  type: LoadBalancer
   selector:
     app: redpanda-console
   ports:
   - name: http
-    port: 8080
+    port: 80
     targetPort: 8080
     nodePort: {{ redpanda_console_nodeport }}
+  - name: https
+    port: 443
+    targetPort: 8080

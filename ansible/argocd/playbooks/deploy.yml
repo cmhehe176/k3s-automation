@@ -81,16 +81,29 @@
       changed_when: false
       ignore_errors: yes
 
-    - name: Get ArgoCD initial admin password
-      command: kubectl get secret argocd-initial-admin-secret -n {{ argocd_namespace }} -o jsonpath='{.data.password}'
-      register: admin_password_b64
+    - name: Generate bcrypt hash for ArgoCD admin password
+      shell: |
+        PWD_VAL="{{ argocd_admin_password | default('Admin@2026') }}"
+        if [ "$PWD_VAL" = "Admin@2026" ]; then
+          echo '$2a$10$YV5Xp8FbXqTZ9fMZYUhrNObe2/oRVQB/.mWLkoXFNFu2/818hXOC2'
+        else
+          (htpasswd -bnBC 10 "" "$PWD_VAL" 2>/dev/null | tr -d ':\n' | sed 's/^\$2[by]\$/\$2a\$/') || \
+          python3 -c "import bcrypt; print(bcrypt.hashpw(b'$PWD_VAL', bcrypt.gensalt(10)).decode('utf-8'))" 2>/dev/null || \
+          echo '$2a$10$YV5Xp8FbXqTZ9fMZYUhrNObe2/oRVQB/.mWLkoXFNFu2/818hXOC2'
+        fi
+      register: argo_admin_hash
       changed_when: false
-      ignore_errors: yes
 
-    - name: Decode admin password
-      command: echo {{ admin_password_b64.stdout }} | base64 -d
-      register: admin_password
-      when: admin_password_b64.rc == 0
+    - name: Patch ArgoCD secret with fixed admin password
+      shell: |
+        HASH="{{ argo_admin_hash.stdout | trim }}"
+        MTIME=$(date +%FT%T%Z)
+        kubectl patch secret argocd-secret -n {{ argocd_namespace }} -p "{\"stringData\": {\"admin.password\": \"$HASH\", \"admin.passwordMtime\": \"$MTIME\"}}"
+        kubectl rollout restart deployment/argocd-server -n {{ argocd_namespace }}
+      when: argo_admin_hash.stdout is defined and argo_admin_hash.stdout != ""
+
+    - name: Wait for ArgoCD server rollout after password patch
+      command: kubectl rollout status deployment/argocd-server -n {{ argocd_namespace }} --timeout=120s
       changed_when: false
 
     - name: Get ArgoCD pods status
@@ -112,13 +125,10 @@
           - "Version: {{ argocd_version }}"
           - ""
           - "Access ArgoCD UI:"
-          - "  URL: https://{{ lb_ip.stdout | default('pending') }}"
-          - "  Username: admin"
-          - "  Password: {{ admin_password.stdout | default('See secret argocd-initial-admin-secret') }}"
+          - "  URL: https://{{ lb_ip.stdout | default('192.168.1.100') }}:443"
+          - "  Username: {{ argocd_admin_user | default('admin') }}"
+          - "  Password: {{ argocd_admin_password | default('Admin@2026') }}"
           - ""
           - "CLI Login:"
-          - "  argocd login {{ lb_ip.stdout | default('pending') }} --username admin --password '{{ admin_password.stdout | default('PASSWORD') }}' --insecure"
-          - ""
-          - "Get password manually:"
-          - "  kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath='{.data.password}' | base64 -d"
+          - "  argocd login {{ lb_ip.stdout | default('192.168.1.100') }}:443 --username admin --password '{{ argocd_admin_password | default('Admin@2026') }}' --insecure"
           - "=========================================="
