@@ -180,3 +180,65 @@ Chỉ cần chạy lệnh có sẵn:
 ```
 Worker mới sẽ tự động gia nhập cụm, mở cổng `30900`/`32000` và san sẻ tải tính toán mà **không cần sửa lại cấu hình Domain hay Console**.
 
+---
+
+## 🛠️ 6. Sổ tay Xử lý Sự cố Đăng nhập & Xác thực (Troubleshooting Runbook)
+
+### 🚨 Case 1: Lỗi `Bad Request: Requested resource does not exist`
+* **Nguyên nhân:** Trình duyệt tải lại (F5 / Back) hoặc bookmark một đường link Dex cũ có chứa mã yêu cầu dùng 1 lần (`?req=...` hoặc `/auth/local`). Dex đã huỷ mã này sau khi cấp token để chống tấn công Replay.
+* **Cách xử lý (5 giây):**
+  1. Xóa sạch đuôi URL trên thanh địa chỉ, chỉ gõ đúng URL gốc của Console:
+     ```text
+     http://<IP_NODE>:30900/
+     ```
+  2. Nhấn **Enter** $\rightarrow$ Hệ thống tự động sinh request mới và vào thẳng Dashboard.
+  3. Hoặc mở một **Tab Ẩn danh (Ctrl + Shift + N)** để truy cập.
+
+---
+
+### 🚨 Case 2: Lỗi `Authentication error (There was an authentication error. Please log out and try again)`
+* **Nguyên nhân:** Console bị rớt `state cookie` (`failed to parse state cookie: http: named cookie not present`) do tải lại trang khi URL còn đuôi `/auth/callback?...` hoặc trình duyệt chặn cookie chuyển đổi giữa HTTPS (Dex :32000) và HTTP (Console :30900).
+* **Cách xử lý:**
+  1. Xóa phần `/auth/callback?...` trên thanh địa chỉ, chỉ để lại `http://<IP_NODE>:30900/` rồi Enter.
+  2. Khi đăng nhập tại Dex: Nhập user/pass $\rightarrow$ Bấm **Log In** $\rightarrow$ **Chờ 1-2 giây cho nó tự redirect, tuyệt đối không bấm F5 hay bấm Back**.
+
+---
+
+### 🚨 Case 3: Đăng nhập xong lại bị redirect quay lại trang Dex (Redirect Loop)
+* **Nguyên nhân:** Trình duyệt chặn handshake ngầm do chưa chấp nhận chứng chỉ SSL tự ký của Dex.
+* **Cách xử lý:**
+  1. Mở một Tab mới, truy cập:
+     ```text
+     https://<IP_NODE>:32000
+     ```
+  2. Bấm **Nâng cao (Advanced)** $\rightarrow$ Bấm **Tiếp tục truy cập / Proceed to ... (unsafe)**.
+  3. Quay lại trang Console `http://<IP_NODE>:30900` và đăng nhập lại.
+
+---
+
+### 💾 7. Kiến trúc Database Lưu trữ Bền vững của Dex (SQLite3 + PVC Longhorn)
+Từ phiên bản hiện tại, Dex OIDC không còn lưu session trên RAM tạm thời (`memory`) mà sử dụng **SQLite3 Database** gắn với ổ cứng lưu trữ **PersistentVolumeClaim (`dex-data` 1Gi)** qua StorageClass Longhorn:
+* **Vị trí file DB:** `/var/dex/dex.db` (bên trong Pod Dex).
+* **Dữ liệu được bảo toàn:** Signing Keys (JWKS RSA), Active Sessions, Offline Sessions, Refresh Tokens, Auth Requests.
+* **Lợi ích:** Khi Pod Dex restart, cập nhật cấu hình hay cụm reboot, phiên làm việc của người dùng **không bao giờ bị mất hay lỗi database**.
+
+---
+
+### 🔍 Lệnh Terminal Debug Nhanh
+
+```bash
+# 1. Xem log Console (bắt lỗi cookie, rớt token OIDC)
+kubectl logs -n openshift-console deployment/openshift-console -f
+
+# 2. Xem log Dex (bắt lỗi user, mật khẩu, database SQLite3)
+kubectl logs -n openshift-console deployment/dex -f
+
+# 3. Khởi động lại Console & Dex để làm mới toàn bộ session
+kubectl rollout restart deployment/dex deployment/openshift-console -n openshift-console
+
+# 4. Kiểm tra trạng thái ổ cứng SQLite3 của Dex
+kubectl get pvc -n openshift-console dex-data
+kubectl exec -n openshift-console deployment/dex -- ls -la /var/dex/dex.db
+```
+
+
