@@ -1,0 +1,146 @@
+---
+# ==============================================================================
+# 🌐 1. METALLB QUICK ACCESS LINKS (Application Menu - 9 Dots Launcher)
+# ==============================================================================
+apiVersion: console.openshift.io/v1
+kind: ConsoleLink
+metadata:
+  name: metallb-pools-link
+spec:
+  applicationMenu:
+    section: "🌐 Networking & LoadBalancers"
+  href: 'https://{{ ansible_host }}:{{ console_nodeport }}/k8s/ns/metallb-system/metallb.io~v1beta1~IPAddressPool'
+  location: ApplicationMenu
+  text: "MetalLB IP Address Pools"
+---
+apiVersion: console.openshift.io/v1
+kind: ConsoleLink
+metadata:
+  name: metallb-l2adv-link
+spec:
+  applicationMenu:
+    section: "🌐 Networking & LoadBalancers"
+  href: 'https://{{ ansible_host }}:{{ console_nodeport }}/k8s/ns/metallb-system/metallb.io~v1beta1~L2Advertisement'
+  location: ApplicationMenu
+  text: "MetalLB L2 Advertisements"
+---
+# ==============================================================================
+# 🚀 2. MIDDLEWARE & TOOLS SHORTCUT LINKS
+# ==============================================================================
+apiVersion: console.openshift.io/v1
+kind: ConsoleLink
+metadata:
+  name: argocd-app-link
+spec:
+  applicationMenu:
+    section: "🚀 DevOps & Middleware"
+  href: 'https://{{ ansible_host }}:30887'
+  location: ApplicationMenu
+  text: "ArgoCD GitOps"
+---
+apiVersion: console.openshift.io/v1
+kind: ConsoleLink
+metadata:
+  name: minio-app-link
+spec:
+  applicationMenu:
+    section: "🚀 DevOps & Middleware"
+  href: 'https://{{ ansible_host }}:31901'
+  location: ApplicationMenu
+  text: "MinIO S3 Object Storage"
+---
+apiVersion: console.openshift.io/v1
+kind: ConsoleLink
+metadata:
+  name: redpanda-app-link
+spec:
+  applicationMenu:
+    section: "🚀 DevOps & Middleware"
+  href: 'https://{{ ansible_host }}:31080'
+  location: ApplicationMenu
+  text: "Redpanda Kafka Console"
+---
+apiVersion: console.openshift.io/v1
+kind: ConsoleLink
+metadata:
+  name: longhorn-app-link
+spec:
+  applicationMenu:
+    section: "🚀 DevOps & Middleware"
+  href: 'https://{{ ansible_host }}:31520'
+  location: ApplicationMenu
+  text: "Longhorn Storage UI"
+---
+# ==============================================================================
+# 📋 3. CONSOLE YAML SAMPLES FOR METALLB & INGRESS
+# ==============================================================================
+apiVersion: console.openshift.io/v1
+kind: ConsoleYAMLSample
+metadata:
+  name: metallb-ipaddresspool-sample
+spec:
+  targetResource:
+    apiVersion: metallb.io/v1beta1
+    kind: IPAddressPool
+  title: "Default MetalLB IPAddressPool"
+  description: "Cấu hình dải IP cấp phát cho LoadBalancer Service"
+  yaml: |
+    apiVersion: metallb.io/v1beta1
+    kind: IPAddressPool
+    metadata:
+      name: custom-pool
+      namespace: metallb-system
+    spec:
+      addresses:
+        - 10.200.10.1-10.200.10.250
+---
+apiVersion: console.openshift.io/v1
+kind: ConsoleYAMLSample
+metadata:
+  name: metallb-l2advertisement-sample
+spec:
+  targetResource:
+    apiVersion: metallb.io/v1beta1
+    kind: L2Advertisement
+  title: "Default MetalLB L2Advertisement"
+  description: "Quảng bá Layer 2 ARP cho dải IP MetalLB"
+  yaml: |
+    apiVersion: metallb.io/v1beta1
+    kind: L2Advertisement
+    metadata:
+      name: custom-l2adv
+      namespace: metallb-system
+    spec:
+      ipAddressPools:
+        - default-pool
+---
+apiVersion: console.openshift.io/v1
+kind: ConsoleYAMLSample
+metadata:
+  name: kubernetes-ingress-sample
+spec:
+  targetResource:
+    apiVersion: networking.k8s.io/v1
+    kind: Ingress
+  title: "Standard Kubernetes Ingress"
+  description: "Mẫu cấu hình Kubernetes Ingress điều hướng HTTP/HTTPS"
+  yaml: |
+    apiVersion: networking.k8s.io/v1
+    kind: Ingress
+    metadata:
+      name: example-ingress
+      namespace: default
+      annotations:
+        kubernetes.io/ingress.class: nginx
+    spec:
+      rules:
+      - host: example.local.pro
+        http:
+          paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: example-service
+                port:
+                  number: 80

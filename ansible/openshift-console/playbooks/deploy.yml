@@ -265,6 +265,19 @@
       register: apply_rbac
       changed_when: "'created' in apply_rbac.stdout or 'configured' in apply_rbac.stdout"
 
+    - name: Render Console Customizations manifest template (MetalLB & Shortcuts)
+      template:
+        src: ../templates/console-customizations.yaml.j2
+        dest: /tmp/openshift-console/console-customizations.yaml
+        mode: '0644'
+
+    - name: Apply Console Customizations manifests
+      command: kubectl apply -f /tmp/openshift-console/console-customizations.yaml
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      register: apply_customizations
+      changed_when: "'created' in apply_customizations.stdout or 'configured' in apply_customizations.stdout"
+
     - name: Clean up temporary files
       file:
         path: /tmp/openshift-console
