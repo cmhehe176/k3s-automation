@@ -96,9 +96,11 @@
 
     - name: Patch ArgoCD secret with fixed admin password
       shell: |
-        HASH="{{ argo_admin_hash.stdout | trim }}"
-        MTIME=$(date +%FT%T%Z)
-        kubectl patch secret argocd-secret -n {{ argocd_namespace }} -p "{\"stringData\": {\"admin.password\": \"$HASH\", \"admin.passwordMtime\": \"$MTIME\"}}"
+        HASH_VAL='{{ argo_admin_hash.stdout | trim }}'
+        HASH_B64=$(echo -n "$HASH_VAL" | base64 | tr -d '\n')
+        MTIME_B64=$(date +%FT%T%Z | base64 | tr -d '\n')
+        kubectl patch secret argocd-secret -n {{ argocd_namespace }} --type=merge -p "{\"data\": {\"admin.password\": \"$HASH_B64\", \"admin.passwordMtime\": \"$MTIME_B64\"}}"
+        kubectl delete secret argocd-initial-admin-secret -n {{ argocd_namespace }} --ignore-not-found=true
         kubectl rollout restart deployment/argocd-server -n {{ argocd_namespace }}
       when: argo_admin_hash.stdout is defined and argo_admin_hash.stdout != ""
 
