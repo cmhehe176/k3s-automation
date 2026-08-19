@@ -210,6 +210,8 @@ spec:
       labels:
         app: prometheus
     spec:
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: "true"
       serviceAccountName: prometheus-k8s
       containers:
       - name: prometheus
@@ -360,6 +362,8 @@ spec:
       labels:
         app: kube-state-metrics
     spec:
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: "true"
       serviceAccountName: prometheus-k8s
       containers:
       - name: kube-state-metrics

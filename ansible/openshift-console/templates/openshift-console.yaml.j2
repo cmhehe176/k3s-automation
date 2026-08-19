@@ -86,6 +86,8 @@ spec:
       labels:
         app: openshift-console
     spec:
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: "true"
       serviceAccountName: console-sa
 {% if ansible_host != node_ip %}
       hostAliases:
@@ -170,6 +172,8 @@ spec:
       labels:
         app: networking-console-plugin
     spec:
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: "true"
       containers:
       - name: plugin
         image: quay.io/orenc/networking-console-plugin:4.16
@@ -398,6 +402,8 @@ spec:
       labels:
         app: monitoring-console-plugin
     spec:
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: "true"
       containers:
       - name: plugin
         image: quay.io/openshift-observability-ui/monitoring-console-plugin:v1.0.0

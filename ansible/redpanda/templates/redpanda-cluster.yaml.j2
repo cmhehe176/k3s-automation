@@ -87,6 +87,8 @@ spec:
       labels:
         app: redpanda
     spec:
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: "true"
       initContainers:
       - name: fix-permissions
         image: busybox:latest
@@ -182,6 +184,8 @@ spec:
       labels:
         app: redpanda-console
     spec:
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: "true"
       containers:
       - name: console
         image: {{ redpanda_console_image }}

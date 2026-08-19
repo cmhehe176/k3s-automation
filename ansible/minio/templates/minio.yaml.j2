@@ -63,6 +63,8 @@ spec:
       labels:
         app: minio
     spec:
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: "true"
       initContainers:
       - name: fix-permissions
         image: busybox:latest

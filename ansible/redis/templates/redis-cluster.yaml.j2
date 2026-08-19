@@ -101,6 +101,8 @@ spec:
       labels:
         app: redis-cluster
     spec:
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: "true"
       containers:
       - name: redis
         image: {{ redis_image }}

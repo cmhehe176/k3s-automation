@@ -65,6 +65,8 @@ spec:
       labels:
         app: oracle-db
     spec:
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: "true"
       terminationGracePeriodSeconds: 120
       initContainers:
       - name: fix-permissions

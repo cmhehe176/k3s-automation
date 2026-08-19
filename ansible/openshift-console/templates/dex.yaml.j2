@@ -183,6 +183,8 @@ spec:
       labels:
         app: dex
     spec:
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: "true"
       serviceAccountName: dex
       securityContext:
         fsGroup: 1001
