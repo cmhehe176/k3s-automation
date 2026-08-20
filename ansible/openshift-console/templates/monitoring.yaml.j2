@@ -302,13 +302,14 @@ spec:
       - name: node-exporter
         image: quay.io/prometheus/node-exporter:v1.8.2
         args:
+          - "--web.listen-address=:9101"
           - "--path.procfs=/host/proc"
           - "--path.sysfs=/host/sys"
           - "--path.rootfs=/host/root"
           - "--collector.filesystem.ignored-mount-points=^/(dev|proc|sys|var/lib/docker/.+|var/lib/kubelet/.+)($|/)"
         ports:
         - name: metrics
-          containerPort: 9100
+          containerPort: 9101
         volumeMounts:
         - name: proc
           mountPath: /host/proc
@@ -350,8 +351,8 @@ spec:
     app: node-exporter
   ports:
   - name: metrics
-    port: 9100
-    targetPort: 9100
+    port: 9101
+    targetPort: 9101
 ---
 apiVersion: apps/v1
 kind: Deployment

@@ -27,6 +27,17 @@ common_packages_redhat:
   - iscsi-initiator-utils
   - python3-kubernetes
 
+common_packages_el7:
+  - curl
+  - wget
+  - vim
+  - git
+  - net-tools
+  - tar
+  - iptables
+  - nfs-utils
+  - iscsi-initiator-utils
+
 k3s_firewall_ports:
   - { port: '6443/tcp', rule: 'k3s-api' }
   - { port: '10250/tcp', rule: 'kubelet' }
