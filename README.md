@@ -51,6 +51,7 @@ Every system component and workload runs in a dedicated namespace with persisten
 | `redis` | Cache | Redis Cluster (16,384 Hash Slots) | NodePort `31379` |
 | `redpanda` | Streaming | Redpanda Kafka & Web Console | NodePort `31092`, `31080` |
 | `minio` | Object Store | MinIO S3 API & Web Console | NodePort `31900`, `31901` |
+| `logging` | Observability | ECK Operator, Elasticsearch, Kibana, APM, Vector | NodePort `30601`, Port `8200`, `9200` |
 | `argocd` | GitOps | ArgoCD Server & Controller | NodePort / LB |
 
 ---
@@ -60,7 +61,7 @@ Every system component and workload runs in a dedicated namespace with persisten
 Toàn bộ tài liệu, hướng dẫn và ghi chú kỹ thuật được lưu trữ duy nhất tại thư mục **[`docs/`](docs/README.md)**:
 
 - 📖 **[Complete Guide](docs/guides/complete-guide.md)** — Tài liệu hướng dẫn toàn diện từ A-Z
-- 📦 **[Application Docs](docs/README.md#2-application--middleware-guides-docsapps)** — Hướng dẫn chi tiết từng app ([OpenShift Console](docs/apps/openshift-console.md), [Oracle](docs/apps/oracle.md), [Redis](docs/apps/redis.md), [Redpanda](docs/apps/redpanda.md), [MinIO](docs/apps/minio.md), [ArgoCD](docs/apps/argocd.md), [CLI Manager](docs/apps/cli-cluster-sh.md))
+- 📦 **[Application Docs](docs/README.md#2-application--middleware-guides-docsapps)** — Hướng dẫn chi tiết từng app ([OpenShift Console](docs/apps/openshift-console.md), [Oracle](docs/apps/oracle.md), [Redis](docs/apps/redis.md), [Redpanda](docs/apps/redpanda.md), [MinIO](docs/apps/minio.md), [Logging Stack](docs/apps/logging.md), [ArgoCD](docs/apps/argocd.md), [CLI Manager](docs/apps/cli-cluster-sh.md))
 - 💻 **[Client Machine Setup](docs/operations/client-setup.md)** — Cài đặt Ansible và công cụ trên máy client / laptop
 - 🔒 **[RBAC & Permissions Guide](docs/operations/rbac-and-permissions.md)** — Hướng dẫn phân quyền User/Group trên CLI và OpenShift Console
 - 📦 **[ConfigMaps & Secrets Reference](docs/reference/configmaps-and-secrets.md)** — Kiến trúc tham số động, danh mục ConfigMaps & Secrets

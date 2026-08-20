@@ -82,6 +82,7 @@ Every system component and workload is isolated into dedicated namespaces:
 | `redis` | Cache/Store | Redis Cluster 16k Hash Slots (Port 31379) | `redis/deploy.yml` |
 | `redpanda` | Streaming | Redpanda Kafka (Port 31092) & Console (31080) | `redpanda/deploy.yml` |
 | `minio` | Storage | MinIO S3 API (Port 31900) & Console (31901) | `minio/deploy.yml` |
+| `logging` | Observability | ECK Operator, Elasticsearch, Kibana, APM, Vector | `logging/deploy.yml` |
 | `argocd` | GitOps | ArgoCD Server, Controller, Redis | `argocd/deploy.yml` |
 | `kubesphere-system`| Management | KubeSphere Core v4 Console & API | `kubesphere/deploy.yml` |
 

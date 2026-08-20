@@ -1,0 +1,36 @@
+apiVersion: apm.k8s.elastic.co/v1
+kind: ApmServer
+metadata:
+  name: apm
+  namespace: logging
+  annotations:
+    eck.k8s.elastic.co/license: basic
+spec:
+  version: 9.5.0
+  count: 1
+  # Chi khai bao elasticsearchRef. kibanaRef se them sau khi Kibana Ready
+  # (kibanaRef chi phuc vu APM Agent Central Configuration).
+  elasticsearchRef:
+    name: elasticsearch
+  http:
+    tls:
+      selfSignedCertificate:
+        disabled: true
+    service:
+      spec:
+        type: ClusterIP
+        ports:
+        - name: http
+          port: 8200
+          targetPort: 8200
+  podTemplate:
+    spec:
+      containers:
+      - name: apm-server
+        resources:
+          requests:
+            cpu: 250m
+            memory: 512Mi
+          limits:
+            cpu: "1"
+            memory: 1Gi

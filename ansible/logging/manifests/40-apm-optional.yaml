@@ -1,0 +1,31 @@
+# TUY CHON - chua apply. Chay: kubectl apply -f 40-apm-optional.yaml
+apiVersion: apm.k8s.elastic.co/v1
+kind: ApmServer
+metadata:
+  name: apm
+  namespace: logging
+spec:
+  version: 9.5.0
+  count: 1
+  elasticsearchRef:
+    name: elasticsearch
+  kibanaRef:
+    name: kibana
+  http:
+    tls:
+      selfSignedCertificate:
+        disabled: true
+    service:
+      spec:
+        type: ClusterIP
+        ports:
+        - name: http
+          port: 8200
+          targetPort: 8200
+  podTemplate:
+    spec:
+      containers:
+      - name: apm-server
+        resources:
+          requests: {cpu: 250m, memory: 512Mi}
+          limits: {cpu: "1", memory: 1Gi}

@@ -68,6 +68,8 @@ Commands:
                           Manage Redpanda (Kafka) Cluster deployment
   minio <deploy|uninstall>
                           Manage MinIO S3 Object Storage deployment
+  logging <deploy|uninstall>
+                          Manage Logging Stack (ECK, Elasticsearch, Kibana, APM, Vector) deployment
   menu                    Open interactive management menu (default if no args)
 
 Examples:
@@ -80,6 +82,7 @@ Examples:
   ./cluster.sh redis deploy
   ./cluster.sh redpanda deploy
   ./cluster.sh minio deploy
+  ./cluster.sh logging deploy
 
 EOF
 }
@@ -88,42 +91,45 @@ EOF
 cmd_deploy_all() {
     print_banner
     echo -e "${GREEN}${BOLD}🚀 BẮT ĐẦU QUY TRÌNH TRIỂN KHAI TOÀN DIỆN (FULL STACK DEPLOYMENT)${NC}"
-    echo -e "${YELLOW}Thứ tự: Core (K3s, MetalLB, Longhorn) ➜ Console/Dex ➜ Middleware (Oracle, Redis, Redpanda, MinIO) ➜ ArgoCD ➜ Verification${NC}"
+    echo -e "${YELLOW}Thứ tự: Core (K3s, MetalLB, Longhorn) ➜ Console/Dex ➜ Middleware (Oracle, Redis, Redpanda, MinIO) ➜ Logging ➜ ArgoCD ➜ Verification${NC}"
     echo "================================================================"
     echo ""
 
-    echo -e "${BOLD}${CYAN}▶️ [BƯỚC 1/10] Chuẩn bị hạ tầng & gói OS (Prerequisites)...${NC}"
+    echo -e "${BOLD}${CYAN}▶️ [BƯỚC 1/11] Chuẩn bị hạ tầng & gói OS (Prerequisites)...${NC}"
     ansible-playbook -i inventory/hosts.ini k3s/playbooks/00-prerequisites.yml
 
-    echo -e "${BOLD}${CYAN}▶️ [BƯỚC 2/10] Khởi tạo K3s Control Plane & CNI Network...${NC}"
+    echo -e "${BOLD}${CYAN}▶️ [BƯỚC 2/11] Khởi tạo K3s Control Plane & CNI Network...${NC}"
     ansible-playbook -i inventory/hosts.ini k3s/playbooks/01-k3s-control.yml
 
-    echo -e "${BOLD}${CYAN}▶️ [BƯỚC 3/10] Cấu hình MetalLB LoadBalancer L2 & IP Pool...${NC}"
+    echo -e "${BOLD}${CYAN}▶️ [BƯỚC 3/11] Cấu hình MetalLB LoadBalancer L2 & IP Pool...${NC}"
     ansible-playbook -i inventory/hosts.ini k3s/playbooks/03-metallb.yml
 
-    echo -e "${BOLD}${CYAN}▶️ [BƯỚC 4/10] Cài đặt Longhorn CSI Storage Driver & Default StorageClass...${NC}"
+    echo -e "${BOLD}${CYAN}▶️ [BƯỚC 4/11] Cài đặt Longhorn CSI Storage Driver & Default StorageClass...${NC}"
     ansible-playbook -i inventory/hosts.ini k3s/playbooks/04-longhorn.yml
 
-    echo -e "${BOLD}${CYAN}▶️ [BƯỚC 5/10] Triển khai Red Hat OpenShift Web Console & Dex OIDC SSO...${NC}"
+    echo -e "${BOLD}${CYAN}▶️ [BƯỚC 5/11] Triển khai Red Hat OpenShift Web Console & Dex OIDC SSO...${NC}"
     ansible-playbook -i inventory/hosts.ini openshift-console/playbooks/deploy.yml
 
-    echo -e "${BOLD}${CYAN}▶️ [BƯỚC 6/10] Triển khai Oracle Database XE với Persistent Storage...${NC}"
+    echo -e "${BOLD}${CYAN}▶️ [BƯỚC 6/11] Triển khai Oracle Database XE với Persistent Storage...${NC}"
     ansible-playbook -i inventory/hosts.ini oracle/playbooks/deploy.yml
 
-    echo -e "${BOLD}${CYAN}▶️ [BƯỚC 7/10] Khởi tạo Redis Cluster (6 Pods, 16,384 Hash Slots)...${NC}"
+    echo -e "${BOLD}${CYAN}▶️ [BƯỚC 7/11] Khởi tạo Redis Cluster (6 Pods, 16,384 Hash Slots)...${NC}"
     ansible-playbook -i inventory/hosts.ini redis/playbooks/deploy.yml
 
-    echo -e "${BOLD}${CYAN}▶️ [BƯỚC 8/10] Khởi tạo Redpanda Streaming Cluster & Web Console...${NC}"
+    echo -e "${BOLD}${CYAN}▶️ [BƯỚC 8/11] Khởi tạo Redpanda Streaming Cluster & Web Console...${NC}"
     ansible-playbook -i inventory/hosts.ini redpanda/playbooks/deploy.yml
 
-    echo -e "${BOLD}${CYAN}▶️ [BƯỚC 9/10] Triển khai MinIO S3 Object Storage & Web Console...${NC}"
+    echo -e "${BOLD}${CYAN}▶️ [BƯỚC 9/11] Triển khai MinIO S3 Object Storage & Web Console...${NC}"
     ansible-playbook -i inventory/hosts.ini minio/playbooks/deploy.yml
 
-    echo -e "${BOLD}${CYAN}▶️ [BƯỚC 10/10] Triển khai ArgoCD GitOps Continuous Delivery...${NC}"
+    echo -e "${BOLD}${CYAN}▶️ [BƯỚC 10/11] Triển khai Production Logging Stack (Elasticsearch, Kibana, Vector, APM)...${NC}"
+    ansible-playbook -i inventory/hosts.ini logging/playbooks/deploy.yml
+
+    echo -e "${BOLD}${CYAN}▶️ [BƯỚC 11/11] Triển khai ArgoCD GitOps Continuous Delivery...${NC}"
     ansible-playbook -i inventory/hosts.ini argocd/playbooks/deploy.yml
 
     echo ""
-    echo -e "${GREEN}${BOLD}🎉 TOÀN BỘ 10 BƯỚC TRIỂN KHAI ĐÃ HOÀN TẤT THÀNH CÔNG!${NC}"
+    echo -e "${GREEN}${BOLD}🎉 TOÀN BỘ 11 BƯỚC TRIỂN KHAI ĐÃ HOÀN TẤT THÀNH CÔNG!${NC}"
     echo "================================================================"
     cmd_status
 }
@@ -382,6 +388,33 @@ cmd_minio() {
     esac
 }
 
+cmd_logging() {
+    local action="${1:-deploy}"
+    print_banner
+    case "$action" in
+        deploy)
+            echo -e "${GREEN}🪵 Deploying Production Logging Stack on K3s (ECK, Elasticsearch, Kibana, APM, Vector)...${NC}"
+            if [ -x "./logging/scripts/deploy-logging.sh" ]; then
+                ./logging/scripts/deploy-logging.sh
+            else
+                ansible-playbook -i inventory/hosts.ini logging/playbooks/deploy.yml
+            fi
+            ;;
+        uninstall|remove)
+            echo -e "${RED}🪵 Uninstalling Logging Stack (Namespace: logging)...${NC}"
+            if [ -x "./logging/scripts/uninstall-logging.sh" ]; then
+                ./logging/scripts/uninstall-logging.sh
+            else
+                ansible-playbook -i inventory/hosts.ini logging/playbooks/uninstall.yml || true
+            fi
+            ;;
+        *)
+            echo -e "${RED}❌ Invalid Logging action: $action (use 'deploy' or 'uninstall')${NC}"
+            exit 1
+            ;;
+    esac
+}
+
 interactive_menu() {
     while true; do
         clear
@@ -402,14 +435,15 @@ interactive_menu() {
         echo -e "  ${GREEN}12)${NC} ⚡ Redis Cluster (Deploy / Uninstall)"
         echo -e "  ${GREEN}13)${NC} 🐼 Redpanda / Kafka Cluster (Deploy / Uninstall)"
         echo -e "  ${GREEN}14)${NC} 🪣 MinIO S3 Storage (Deploy / Uninstall)"
-        echo -e "  ${RED}15)${NC} 🗑️  Teardown Entire Cluster"
+        echo -e "  ${GREEN}15)${NC} 🪵 Production Logging Stack (Deploy / Uninstall)"
+        echo -e "  ${RED}16)${NC} 🗑️  Teardown Entire Cluster"
         echo -e "  ${CYAN}0)${NC} ❌ Exit"
         echo ""
-        read -p "Enter choice [0-15]: " choice
+        read -p "Enter choice [0-16]: " choice
 
         case $choice in
             1)
-                echo -e "${YELLOW}Deploying Full Stack (Core ➜ Console ➜ Middlewares ➜ ArgoCD)...${NC}"
+                echo -e "${YELLOW}Deploying Full Stack (Core ➜ Console ➜ Middlewares ➜ Logging ➜ ArgoCD)...${NC}"
                 cmd_deploy_all
                 read -p "Press Enter to continue..."
                 ;;
@@ -532,6 +566,17 @@ interactive_menu() {
                 read -p "Press Enter to continue..."
                 ;;
             15)
+                echo "1) Deploy Production Logging Stack"
+                echo "2) Uninstall Production Logging Stack"
+                read -p "Select Logging action [1-2]: " log_choice
+                if [ "$log_choice" == "1" ]; then
+                    cmd_logging deploy
+                elif [ "$log_choice" == "2" ]; then
+                    cmd_logging uninstall
+                fi
+                read -p "Press Enter to continue..."
+                ;;
+            16)
                 echo -e "${RED}WARNING: This will completely destroy the cluster!${NC}"
                 read -p "Type 'yes' to confirm: " confirm
                 if [ "$confirm" == "yes" ]; then
@@ -608,6 +653,9 @@ case "$ACTION" in
     minio|s3)
         cmd_minio "$@"
         ;;
+    logging|elk|elastic|vector|apm)
+        cmd_logging "$@"
+        ;;
     menu)
         interactive_menu
         ;;
@@ -620,3 +668,4 @@ case "$ACTION" in
         exit 1
         ;;
 esac
+

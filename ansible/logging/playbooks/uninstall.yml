@@ -1,0 +1,59 @@
+---
+- name: Uninstall Logging Stack (ECK, Elasticsearch, Kibana, APM, Vector) from K3s
+  hosts: k3s_control[0]
+  become: yes
+  vars_files:
+    - ../vars/main.yml
+
+  tasks:
+    - name: Delete APM Server
+      command: kubectl delete apmserver {{ apm_name }} -n {{ logging_namespace }} --ignore-not-found=true --timeout=60s
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      failed_when: false
+      changed_when: true
+
+    - name: Delete Kibana instance
+      command: kubectl delete kibana {{ kibana_name }} -n {{ logging_namespace }} --ignore-not-found=true --timeout=60s
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      failed_when: false
+      changed_when: true
+
+    - name: Delete Vector daemonset and RBAC resources
+      command: >
+        kubectl delete daemonset vector -n {{ logging_namespace }} --ignore-not-found=true &&
+        kubectl delete cm vector -n {{ logging_namespace }} --ignore-not-found=true &&
+        kubectl delete clusterrolebinding vector --ignore-not-found=true &&
+        kubectl delete clusterrole vector --ignore-not-found=true &&
+        kubectl delete sa vector -n {{ logging_namespace }} --ignore-not-found=true
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      failed_when: false
+      changed_when: true
+
+    - name: Delete Elasticsearch cluster
+      command: kubectl delete elasticsearch {{ elasticsearch_name }} -n {{ logging_namespace }} --ignore-not-found=true --timeout=120s
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      failed_when: false
+      changed_when: true
+
+    - name: Delete Logging Namespace
+      command: kubectl delete namespace {{ logging_namespace }} --ignore-not-found=true --timeout=120s
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      register: delete_ns
+      failed_when: false
+      changed_when: delete_ns.rc == 0
+
+    - name: Delete Custom StorageClass for Elasticsearch
+      command: kubectl delete storageclass {{ elasticsearch_storage_class }} --ignore-not-found=true
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      failed_when: false
+      changed_when: true
+
+    - name: Display uninstallation status
+      debug:
+        msg: "Logging stack (ECK, Elasticsearch, Kibana, APM, Vector) uninstalled successfully from K3s."

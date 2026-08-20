@@ -1,0 +1,48 @@
+---
+logging_namespace: "logging"
+eck_version: "3.5.0"
+
+# Elasticsearch Configuration
+elasticsearch_name: "elasticsearch"
+elasticsearch_version: "9.5.0"
+elasticsearch_replicas: 1
+elasticsearch_storage_class: "longhorn-es"
+elasticsearch_storage_size: "40Gi"
+elasticsearch_storage_replicas: "2"
+elasticsearch_cpu_request: "1"
+elasticsearch_memory_request: "4Gi"
+elasticsearch_cpu_limit: "2"
+elasticsearch_memory_limit: "6Gi"
+
+# Kibana Configuration
+kibana_name: "kibana"
+kibana_version: "9.5.0"
+kibana_replicas: 1
+kibana_nodeport: 30601
+kibana_cpu_request: "500m"
+kibana_memory_request: "1Gi"
+kibana_cpu_limit: "1"
+kibana_memory_limit: "2Gi"
+
+# APM Server Configuration
+apm_enabled: true
+apm_name: "apm"
+apm_version: "9.5.0"
+apm_replicas: 1
+apm_port: 8200
+apm_cpu_request: "250m"
+apm_memory_request: "512Mi"
+apm_cpu_limit: "1"
+apm_memory_limit: "1Gi"
+
+# Vector DaemonSet Configuration
+vector_image: "docker.io/timberio/vector:0.57.0-distroless-libc"
+vector_cpu_request: "100m"
+vector_memory_request: "256Mi"
+vector_cpu_limit: "500m"
+vector_memory_limit: "1Gi"
+vector_filtered_namespaces:
+  - "hn1-vdc-prod-core-backend-thanhtoantaptrung"
+  - "hn1-vdc-prod-dmz-frontend-thanhtoantaptrung"
+
+kubeconfig_path: "/etc/rancher/k3s/k3s.yaml"

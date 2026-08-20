@@ -1,0 +1,44 @@
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: {{ elasticsearch_name }}
+  namespace: {{ logging_namespace }}
+  annotations:
+    eck.k8s.elastic.co/license: basic
+spec:
+  version: {{ elasticsearch_version }}
+  nodeSets:
+  - name: elasticsearch-data
+    count: {{ elasticsearch_replicas }}
+    config:
+      node.store.allow_mmap: false
+    podTemplate:
+      spec:
+        # 3 pod / 2 node: uu tien trai deu, khong bat buoc (soft anti-affinity)
+        affinity:
+          podAntiAffinity:
+            preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                topologyKey: kubernetes.io/hostname
+                labelSelector:
+                  matchLabels:
+                    elasticsearch.k8s.elastic.co/cluster-name: {{ elasticsearch_name }}
+        containers:
+        - name: elasticsearch
+          resources:
+            requests:
+              cpu: "{{ elasticsearch_cpu_request }}"
+              memory: "{{ elasticsearch_memory_request }}"
+            limits:
+              cpu: "{{ elasticsearch_cpu_limit }}"
+              memory: "{{ elasticsearch_memory_limit }}"
+    volumeClaimTemplates:
+    - metadata:
+        name: elasticsearch-data
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources:
+          requests:
+            storage: {{ elasticsearch_storage_size }}
+        storageClassName: {{ elasticsearch_storage_class }}

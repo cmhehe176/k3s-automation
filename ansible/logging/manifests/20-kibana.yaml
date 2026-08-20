@@ -1,0 +1,39 @@
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: kibana
+  namespace: logging
+  annotations:
+    eck.k8s.elastic.co/license: basic
+spec:
+  version: 9.5.0
+  count: 1
+  elasticsearchRef:
+    name: elasticsearch
+  config:
+    server.publicBaseUrl: "http://192.168.1.237:30601"
+  http:
+    tls:
+      selfSignedCertificate:
+        # Tat TLS o lop ngoai -> truy cap bang http, do vuong canh bao cert tu ky.
+        # ES <-> Kibana van di TLS noi bo.
+        disabled: true
+    service:
+      spec:
+        type: NodePort
+        ports:
+        - name: http
+          port: 5601
+          targetPort: 5601
+          nodePort: 30601
+  podTemplate:
+    spec:
+      containers:
+      - name: kibana
+        resources:
+          requests:
+            cpu: 500m
+            memory: 1Gi
+          limits:
+            cpu: "1"
+            memory: 2Gi

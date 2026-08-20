@@ -59,8 +59,8 @@ metadata:
 data:
   prometheus.yml: |
     global:
-      scrape_interval: 15s
-      evaluation_interval: 15s
+      scrape_interval: {{ prometheus_scrape_interval | default('30s') }}
+      evaluation_interval: {{ prometheus_evaluation_interval | default('30s') }}
 
     rule_files:
       - /etc/prometheus/rules/*.yaml
@@ -219,8 +219,16 @@ spec:
         args:
           - "--config.file=/etc/prometheus/prometheus.yml"
           - "--storage.tsdb.path=/prometheus"
-          - "--storage.tsdb.retention.time=7d"
+          - "--storage.tsdb.retention.time={{ prometheus_retention_time | default('2d') }}"
+          - "--storage.tsdb.retention.size={{ prometheus_retention_size | default('2GB') }}"
+          - "--storage.tsdb.min-block-duration=2h"
+          - "--storage.tsdb.max-block-duration=2h"
           - "--web.enable-lifecycle"
+        env:
+          - name: GOMEMLIMIT
+            value: "600MiB"
+          - name: GOGC
+            value: "50"
         ports:
         - name: web
           containerPort: 9090
@@ -237,7 +245,7 @@ spec:
             memory: 128Mi
           limits:
             cpu: 500m
-            memory: 512Mi
+            memory: 768Mi
       volumes:
       - name: config
         configMap:

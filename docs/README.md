@@ -19,6 +19,7 @@ Hướng dẫn chi tiết từng dịch vụ ứng dụng và middleware trong c
 - ⚡ **[Redis Cluster](apps/redis.md)** — Cụm Redis Cluster phân bổ 16,384 Hash Slots qua 6 pods, port `31379`.
 - 🐼 **[Redpanda Kafka & Console](apps/redpanda.md)** — Cụm Streaming Kafka tốc độ cao bằng C++ kèm giao diện Redpanda Web Console, port `31092` & `31080`.
 - 🪣 **[MinIO S3 Object Storage](apps/minio.md)** — Hệ thống lưu trữ S3 Object Storage hiệu năng cao kèm Web Console, port `31900` & `31901`.
+- 🪵 **[Production Logging Stack](apps/logging.md)** — Cụm ECK Operator, Elasticsearch 9.5.0 (3 nodes), Kibana Web Console, APM Server & Vector log processing.
 - 🐙 **[ArgoCD GitOps](apps/argocd.md)** — Nền tảng GitOps Continuous Delivery tích hợp MetalLB LoadBalancer.
 - 💻 **[CLI & Interactive TUI Manager](apps/cli-cluster-sh.md)** — Hướng dẫn toàn diện sử dụng script điều khiển `./cluster.sh`.
 - 🛠️ **[K3s Management Scripts](apps/k3s-scripts.md)** — Các script vận hành K3s core (`bootstrap.sh`, `add-node.sh`, `remove-node.sh`, `teardown.sh`).

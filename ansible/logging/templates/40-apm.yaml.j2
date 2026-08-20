@@ -1,0 +1,34 @@
+apiVersion: apm.k8s.elastic.co/v1
+kind: ApmServer
+metadata:
+  name: {{ apm_name }}
+  namespace: {{ logging_namespace }}
+  annotations:
+    eck.k8s.elastic.co/license: basic
+spec:
+  version: {{ apm_version }}
+  count: {{ apm_replicas }}
+  elasticsearchRef:
+    name: {{ elasticsearch_name }}
+  http:
+    tls:
+      selfSignedCertificate:
+        disabled: true
+    service:
+      spec:
+        type: ClusterIP
+        ports:
+        - name: http
+          port: {{ apm_port }}
+          targetPort: {{ apm_port }}
+  podTemplate:
+    spec:
+      containers:
+      - name: apm-server
+        resources:
+          requests:
+            cpu: "{{ apm_cpu_request }}"
+            memory: "{{ apm_memory_request }}"
+          limits:
+            cpu: "{{ apm_cpu_limit }}"
+            memory: "{{ apm_memory_limit }}"

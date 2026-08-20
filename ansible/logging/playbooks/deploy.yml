@@ -1,0 +1,201 @@
+---
+- name: Deploy Production Logging Stack (ECK, Elasticsearch, Kibana, APM, Vector) on K3s
+  hosts: k3s_control[0]
+  become: yes
+  vars_files:
+    - ../vars/main.yml
+
+  tasks:
+    - name: Ensure temporary manifests directory exists
+      file:
+        path: /tmp/logging
+        state: directory
+        mode: '0755'
+
+    - name: Render Namespace & StorageClass manifest template
+      template:
+        src: ../templates/00-namespace-sc.yaml.j2
+        dest: /tmp/logging/00-namespace-sc.yaml
+        mode: '0644'
+
+    - name: Apply Logging Namespace and StorageClass
+      command: kubectl apply -f /tmp/logging/00-namespace-sc.yaml
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      register: apply_ns_sc
+      changed_when: "'created' in apply_ns_sc.stdout or 'configured' in apply_ns_sc.stdout"
+
+    - name: Copy ECK CRDs bundle to control node
+      copy:
+        src: ../manifests/eck-crds.yaml
+        dest: /tmp/logging/eck-crds.yaml
+        mode: '0644'
+
+    - name: Apply ECK Custom Resource Definitions (CRDs)
+      command: kubectl apply -f /tmp/logging/eck-crds.yaml
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      register: apply_crds
+      changed_when: "'created' in apply_crds.stdout or 'configured' in apply_crds.stdout"
+
+    - name: Copy ECK Operator manifest to control node
+      copy:
+        src: ../manifests/eck-operator-logging.yaml
+        dest: /tmp/logging/eck-operator-logging.yaml
+        mode: '0644'
+
+    - name: Apply ECK Operator in logging namespace
+      command: kubectl apply -f /tmp/logging/eck-operator-logging.yaml
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      register: apply_operator
+      changed_when: "'created' in apply_operator.stdout or 'configured' in apply_operator.stdout"
+
+    - name: Wait for ECK Operator pod to be ready
+      command: >
+        kubectl wait --namespace {{ logging_namespace }}
+        --for=condition=ready pod -l control-plane=elastic-operator
+        --timeout=180s
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      register: operator_ready
+      retries: 20
+      delay: 5
+      until: operator_ready.rc == 0
+      changed_when: false
+
+    - name: Render Elasticsearch manifest template
+      template:
+        src: ../templates/10-elasticsearch.yaml.j2
+        dest: /tmp/logging/10-elasticsearch.yaml
+        mode: '0644'
+
+    - name: Apply Elasticsearch cluster manifest
+      command: kubectl apply -f /tmp/logging/10-elasticsearch.yaml
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      register: apply_es
+      changed_when: "'created' in apply_es.stdout or 'configured' in apply_es.stdout"
+
+    - name: Wait for Elasticsearch secret with elastic password to be created
+      shell: >
+        kubectl get secret {{ elasticsearch_name }}-es-elastic-user -n {{ logging_namespace }}
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      register: es_secret_check
+      retries: 30
+      delay: 5
+      until: es_secret_check.rc == 0
+      changed_when: false
+
+    - name: Wait for Elasticsearch data pods to be ready
+      command: >
+        kubectl wait --namespace {{ logging_namespace }}
+        --for=condition=ready pod -l elasticsearch.k8s.elastic.co/cluster-name={{ elasticsearch_name }}
+        --timeout=600s
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      register: es_ready
+      retries: 40
+      delay: 10
+      until: es_ready.rc == 0
+      changed_when: false
+
+    - name: Render Kibana manifest template
+      template:
+        src: ../templates/20-kibana.yaml.j2
+        dest: /tmp/logging/20-kibana.yaml
+        mode: '0644'
+
+    - name: Apply Kibana manifest
+      command: kubectl apply -f /tmp/logging/20-kibana.yaml
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      register: apply_kibana
+      changed_when: "'created' in apply_kibana.stdout or 'configured' in apply_kibana.stdout"
+
+    - name: Render Vector log collector manifest template
+      template:
+        src: ../templates/30-vector.yaml.j2
+        dest: /tmp/logging/30-vector.yaml
+        mode: '0644'
+
+    - name: Apply Vector log collector manifest
+      command: kubectl apply -f /tmp/logging/30-vector.yaml
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      register: apply_vector
+      changed_when: "'created' in apply_vector.stdout or 'configured' in apply_vector.stdout"
+
+    - name: Render APM Server manifest template (if enabled)
+      template:
+        src: ../templates/40-apm.yaml.j2
+        dest: /tmp/logging/40-apm.yaml
+        mode: '0644'
+      when: apm_enabled | default(true)
+
+    - name: Apply APM Server manifest (if enabled)
+      command: kubectl apply -f /tmp/logging/40-apm.yaml
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      register: apply_apm
+      when: apm_enabled | default(true)
+      changed_when: "'created' in apply_apm.stdout or 'configured' in apply_apm.stdout"
+
+    - name: Wait for Kibana pod to be ready
+      command: >
+        kubectl wait --namespace {{ logging_namespace }}
+        --for=condition=ready pod -l kibana.k8s.elastic.co/name={{ kibana_name }}
+        --timeout=300s
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      register: kibana_ready
+      retries: 20
+      delay: 10
+      until: kibana_ready.rc == 0
+      changed_when: false
+
+    - name: Wait for Vector DaemonSet rollout
+      command: >
+        kubectl rollout status daemonset/vector -n {{ logging_namespace }} --timeout=180s
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      register: vector_ready
+      changed_when: false
+
+    - name: Retrieve Elasticsearch superuser password
+      shell: >
+        kubectl get secret {{ elasticsearch_name }}-es-elastic-user -n {{ logging_namespace }}
+        -o jsonpath="{.data.elastic}" | base64 -d
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      register: es_elastic_password
+      changed_when: false
+
+    - name: Clean up temporary manifests
+      file:
+        path: /tmp/logging
+        state: absent
+
+    - name: Display Logging Stack connection and status info
+      debug:
+        msg: |
+          ==========================================================
+          🎉 Production Logging Stack Deployed Successfully!
+          ==========================================================
+          Namespace: {{ logging_namespace }}
+          Kibana Web Console: http://{{ ansible_host }}:{{ kibana_nodeport }}
+          Elasticsearch Internal Endpoint: https://{{ elasticsearch_name }}-es-http.{{ logging_namespace }}.svc:9200
+          APM Server Internal Endpoint: http://{{ apm_name }}-apm-http.{{ logging_namespace }}.svc:{{ apm_port }}
+          
+          🔑 Superuser Credentials:
+          Username: elastic
+          Password: {{ es_elastic_password.stdout }}
+          
+          📊 Cluster Topology:
+          - Elasticsearch Nodes: {{ elasticsearch_replicas }} (Longhorn SC: {{ elasticsearch_storage_class }}, Replicas: {{ elasticsearch_storage_replicas }}, {{ elasticsearch_storage_size }}/node)
+          - Kibana: {{ kibana_replicas }} instance (NodePort: {{ kibana_nodeport }})
+          - Log Pipeline: Vector DaemonSet with VRL transforms & dynamic multiline log aggregation
+          - Filtered Namespaces: {{ vector_filtered_namespaces | join(', ') }}
+          - Target Index: k8s-app-YYYY.MM.DD
+          ==========================================================

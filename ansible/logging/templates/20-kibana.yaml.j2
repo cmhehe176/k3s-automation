@@ -1,0 +1,39 @@
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: {{ kibana_name }}
+  namespace: {{ logging_namespace }}
+  annotations:
+    eck.k8s.elastic.co/license: basic
+spec:
+  version: {{ kibana_version }}
+  count: {{ kibana_replicas }}
+  elasticsearchRef:
+    name: {{ elasticsearch_name }}
+  config:
+    server.publicBaseUrl: "http://{{ ansible_host }}:{{ kibana_nodeport }}"
+  http:
+    tls:
+      selfSignedCertificate:
+        # Tat TLS o lop ngoai -> truy cap bang http, do vuong canh bao cert tu ky.
+        # ES <-> Kibana van di TLS noi bo.
+        disabled: true
+    service:
+      spec:
+        type: NodePort
+        ports:
+        - name: http
+          port: 5601
+          targetPort: 5601
+          nodePort: {{ kibana_nodeport }}
+  podTemplate:
+    spec:
+      containers:
+      - name: kibana
+        resources:
+          requests:
+            cpu: "{{ kibana_cpu_request }}"
+            memory: "{{ kibana_memory_request }}"
+          limits:
+            cpu: "{{ kibana_cpu_limit }}"
+            memory: "{{ kibana_memory_limit }}"
