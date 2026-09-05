@@ -6,13 +6,10 @@ common_packages_debian:
   - wget
   - vim
   - git
-  - net-tools
   - htop
   - tar
   - iptables
-  - nfs-common
   - open-iscsi
-  - python3-kubernetes
 
 common_packages_redhat:
   - curl

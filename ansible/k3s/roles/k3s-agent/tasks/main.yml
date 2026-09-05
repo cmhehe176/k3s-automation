@@ -52,30 +52,30 @@
     path: /etc/systemd/system/k3s-agent.service
   register: k3s_agent_service_file
 
-- name: Attempt to download K3s installation script from get.k3s.io
-  get_url:
-    url: https://get.k3s.io
-    dest: /tmp/k3s-install.sh
+- name: Copy K3s binary from local files
+  copy:
+    src: ../../common/files/k3s
+    dest: /usr/local/bin/k3s
     mode: '0755'
-    timeout: 15
-  register: k3s_agent_script_download
-  ignore_errors: yes
-  when: not k3s_agent_binary.stat.exists or not k3s_agent_service_file.stat.exists
+    owner: root
+    group: root
+  when: not k3s_agent_binary.stat.exists
 
-- name: Fallback to bundled local K3s installation script if download failed
+- name: Copy K3s installation script from local files
   copy:
     src: ../../common/files/k3s-install.sh
     dest: /tmp/k3s-install.sh
     mode: '0755'
-  when: (not k3s_agent_binary.stat.exists or not k3s_agent_service_file.stat.exists) and (k3s_agent_script_download is failed or k3s_agent_script_download is skipped)
+  when: not k3s_agent_service_file.stat.exists
 
 - name: Install K3s agent
   shell: |
+    INSTALL_K3S_SKIP_DOWNLOAD=true \
     INSTALL_K3S_VERSION="{{ k3s_version }}" \
     sh /tmp/k3s-install.sh agent
   environment:
     INSTALL_K3S_SKIP_START: "false"
-  when: not k3s_agent_binary.stat.exists or not k3s_agent_service_file.stat.exists
+  when: not k3s_agent_service_file.stat.exists
 
 - name: Flush handlers
   meta: flush_handlers

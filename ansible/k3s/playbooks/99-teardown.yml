@@ -140,7 +140,7 @@
         state: absent
       loop:
         - ~/.kube/config-k3s
-        - "{{ inventory_dir }}/../.vault/cluster-token"
-        - "{{ inventory_dir }}/../.vault/k3s-node-token"
+        - "{{ playbook_dir }}/../../.vault/cluster-token"
+        - "{{ playbook_dir }}/../../.vault/k3s-node-token"
         - /tmp/k3s-node-token
       ignore_errors: yes

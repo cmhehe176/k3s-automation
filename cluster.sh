@@ -28,7 +28,8 @@ fi
 
 cd "$ROOT_DIR"
 export KUBECONFIG="${HOME}/.kube/config-k3s"
-DEFAULT_CONTROL_NODE="${DEFAULT_CONTROL_NODE:-node-1}"
+FIRST_CTRL=$(awk '/^\[k3s_control\]/{while(getline && $0 !~ /^\[/ && $0 !~ /^$/ && $0 !~ /^#/) {print $1; exit}}' "${ROOT_DIR}/inventory/hosts.ini" 2>/dev/null || echo "node-0")
+DEFAULT_CONTROL_NODE="${DEFAULT_CONTROL_NODE:-${FIRST_CTRL:-node-0}}"
 
 # Banner
 print_banner() {

@@ -5,25 +5,11 @@
   become: yes
 
   tasks:
-    - name: Attempt to fetch MetalLB manifest from remote mirrors
-      shell: |
-        curl -fsSL --connect-timeout 10 --max-time 30 "https://raw.githubusercontent.com/metallb/metallb/{{ metallb_version }}/config/manifests/metallb-native.yaml" -o /tmp/metallb.yaml || \
-        curl -fsSL --connect-timeout 10 --max-time 30 "https://cdn.jsdelivr.net/gh/metallb/metallb@{{ metallb_version }}/config/manifests/metallb-native.yaml" -o /tmp/metallb.yaml || \
-        curl -fsSL --connect-timeout 10 --max-time 30 "https://github.com/metallb/metallb/releases/download/{{ metallb_version }}/metallb-native.yaml" -o /tmp/metallb.yaml || true
-      register: download_result
-      changed_when: false
-
-    - name: Check if downloaded MetalLB manifest is valid
-      stat:
-        path: /tmp/metallb.yaml
-      register: manifest_file
-
-    - name: Fallback to bundled local MetalLB manifest if remote download failed
+    - name: Copy bundled local MetalLB manifest
       copy:
         src: ../manifests/metallb-v0.14.8.yaml
         dest: /tmp/metallb.yaml
         mode: '0644'
-      when: not manifest_file.stat.exists or (manifest_file.stat.size | default(0)) < 10000
 
     - name: Apply MetalLB manifest
       command: kubectl apply -f /tmp/metallb.yaml

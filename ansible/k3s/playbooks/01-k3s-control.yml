@@ -3,6 +3,7 @@
   hosts: k3s_control
   gather_facts: yes
   become: yes
+  serial: 1
   roles:
     - k3s-server
 

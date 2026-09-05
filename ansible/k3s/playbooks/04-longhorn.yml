@@ -4,25 +4,11 @@
   gather_facts: no
   become: yes
   tasks:
-    - name: Attempt to fetch Longhorn manifest from remote mirrors
-      shell: |
-        curl -fsSL --connect-timeout 10 --max-time 30 "https://raw.githubusercontent.com/longhorn/longhorn/{{ longhorn_version }}/deploy/longhorn.yaml" -o /tmp/longhorn.yaml || \
-        curl -fsSL --connect-timeout 10 --max-time 30 "https://cdn.jsdelivr.net/gh/longhorn/longhorn@{{ longhorn_version }}/deploy/longhorn.yaml" -o /tmp/longhorn.yaml || \
-        curl -fsSL --connect-timeout 10 --max-time 30 "https://github.com/longhorn/longhorn/releases/download/{{ longhorn_version }}/longhorn.yaml" -o /tmp/longhorn.yaml || true
-      register: download_result
-      changed_when: false
-
-    - name: Check if downloaded Longhorn manifest is valid
-      stat:
-        path: /tmp/longhorn.yaml
-      register: manifest_file
-
-    - name: Fallback to bundled local Longhorn manifest if remote download failed
+    - name: Copy bundled local Longhorn manifest
       copy:
         src: ../manifests/longhorn-v1.7.1.yaml
         dest: /tmp/longhorn.yaml
         mode: '0644'
-      when: not manifest_file.stat.exists or (manifest_file.stat.size | default(0)) < 10000
 
     - name: Apply Longhorn manifest
       command: kubectl apply -f /tmp/longhorn.yaml
@@ -100,6 +86,7 @@
             "longhorn-manager", "-d", "deploy-driver",
             "--manager-image", "longhornio/longhorn-manager:{{ longhorn_version }}",
             "--manager-url", "http://longhorn-backend:9500/v1",
+            "--kubelet-root-dir", "/var/lib/kubelet",
             "--csi-attacher-replica-count", "1",
             "--csi-provisioner-replica-count", "1",
             "--csi-resizer-replica-count", "1",

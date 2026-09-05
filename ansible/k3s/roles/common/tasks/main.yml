@@ -1,15 +1,10 @@
 ---
-- name: Update apt cache (Debian family)
-  apt:
-    update_cache: yes
-    cache_valid_time: 3600
-  when: ansible_facts['os_family'] == "Debian"
-
 - name: Install base packages (Debian family)
   apt:
     name: "{{ common_packages_debian }}"
     state: present
   when: ansible_facts['os_family'] == "Debian"
+  ignore_errors: yes
 
 - name: Install base packages (RHEL 7 / CentOS 7)
   command: "yum install -y {{ common_packages_el7 | join(' ') }}"
